@@ -92,6 +92,20 @@ namespace Bato.Water
         [Range(0f, 1.1f)]
         [SerializeField] float m_SteepnessScale = 0.85f;
 
+        [Header("Bruit")]
+        [Tooltip("Hauteur du bruit ajouté par-dessus la houle, en mètres. 0 = vagues parfaitement " +
+                 "régulières. C'est ce qui empêche de voir le motif se répéter.")]
+        [Range(0f, 0.6f)]
+        [SerializeField] float m_NoiseAmplitude = 0.12f;
+
+        [Tooltip("Finesse du bruit, en cycles par mètre. 0,18 donne des bosses d'environ 5 m.")]
+        [Range(0.02f, 1f)]
+        [SerializeField] float m_NoiseScale = 0.18f;
+
+        [Tooltip("Vitesse de déformation du bruit. Trop haut, l'eau grésille.")]
+        [Range(0f, 2f)]
+        [SerializeField] float m_NoiseSpeed = 0.35f;
+
         [Header("Vagues générées")]
         [SerializeField] GerstnerWave[] m_Waves = Array.Empty<GerstnerWave>();
 
@@ -100,6 +114,10 @@ namespace Bato.Water
         [SerializeField] float m_GlobalAmplitude = 1f;
 
         public float GlobalAmplitude => m_GlobalAmplitude;
+
+        public float NoiseAmplitude => m_NoiseAmplitude;
+        public float NoiseScale => m_NoiseScale;
+        public float NoiseSpeed => m_NoiseSpeed;
 
         public GerstnerWave[] Waves => m_Waves;
 

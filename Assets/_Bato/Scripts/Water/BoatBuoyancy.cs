@@ -53,6 +53,10 @@ namespace Bato.Water
         [Tooltip("Aligne le bateau sur la pente de la vague. 0 = reste à plat, 1 = colle à la surface.")]
         [SerializeField, Range(0f, 1f)] float m_WaveAlignment = 0.35f;
 
+        [Tooltip("Part du redressement conservée en l'air, pendant un saut. À 0 le bateau part en " +
+                 "vrille dès qu'il décolle et retombe sur le flanc.")]
+        [SerializeField, Range(0f, 1f)] float m_AirStabilisation = 0.4f;
+
         Rigidbody m_Rigidbody;
         Vector3[] m_Probes;
         float m_EquilibriumSubmersion;
@@ -176,10 +180,14 @@ namespace Bato.Water
 
             SubmergedRatio = submersionSum / probeCount;
             IsInWater = submersionSum > 0f;
-            if (!IsInWater) return;
 
-            ApplyAngularDamping(SubmergedRatio);
-            ApplyRighting(field, SubmergedRatio);
+            // On continue de stabiliser hors de l'eau, sinon un saut laisse le bateau tourner
+            // librement et il retombe sur le flanc — d'où il ne se relève plus.
+            float stabilisation = IsInWater ? SubmergedRatio : m_AirStabilisation;
+            if (stabilisation <= 0f) return;
+
+            ApplyAngularDamping(stabilisation);
+            ApplyRighting(field, stabilisation, IsInWater);
         }
 
         void ApplyAngularDamping(float immersion)
@@ -189,13 +197,28 @@ namespace Bato.Water
                 ForceMode.Acceleration);
         }
 
-        void ApplyRighting(WaveField field, float immersion)
+        /// <summary>
+        /// Remet le bateau d'aplomb. Le couple est proportionnel à l'ANGLE d'inclinaison, pas au
+        /// produit vectoriel brut : celui-ci a pour norme sin(angle), qui décroît passé 90° et
+        /// s'annule exactement à 180°. Un bateau retourné s'y retrouvait donc en équilibre, sans
+        /// rien pour le redresser — c'est ce qui le laissait la quille en l'air.
+        /// </summary>
+        void ApplyRighting(WaveField field, float strength, bool inWater)
         {
-            var waveNormal = field.SampleNormal(transform.position);
-            var targetUp = Vector3.Slerp(Vector3.up, waveNormal, m_WaveAlignment).normalized;
+            // Hors de l'eau, s'aligner sur une vague qu'on ne touche pas n'a aucun sens.
+            var targetUp = inWater
+                ? Vector3.Slerp(Vector3.up, field.SampleNormal(transform.position), m_WaveAlignment).normalized
+                : Vector3.up;
 
-            var correction = Vector3.Cross(transform.up, targetUp);
-            m_Rigidbody.AddTorque(correction * (m_UprightTorque * immersion), ForceMode.Acceleration);
+            var cross = Vector3.Cross(transform.up, targetUp);
+            float sin = cross.magnitude;
+            float angle = Mathf.Atan2(sin, Vector3.Dot(transform.up, targetUp));   // 0 à π
+
+            // Pile à l'envers, l'axe est indéterminé : on en choisit un pour faire basculer le
+            // bateau d'un côté plutôt que de le laisser sur son point d'équilibre instable.
+            var axis = sin > 1e-4f ? cross / sin : transform.forward;
+
+            m_Rigidbody.AddTorque(axis * (angle * m_UprightTorque * strength), ForceMode.Acceleration);
         }
 
         void OnDrawGizmosSelected()

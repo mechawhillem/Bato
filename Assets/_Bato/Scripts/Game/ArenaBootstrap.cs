@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -30,15 +32,20 @@ namespace Bato
         public bool Ready;
         public int Team;
 
+        /// <summary>Pseudo choisi par le joueur. Taille fixe : une NetworkList n'accepte pas string.</summary>
+        public FixedString32Bytes Name;
+
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref ClientId);
             serializer.SerializeValue(ref Ready);
             serializer.SerializeValue(ref Team);
+            serializer.SerializeValue(ref Name);
         }
 
         public bool Equals(LobbyPlayer other) =>
-            ClientId == other.ClientId && Ready == other.Ready && Team == other.Team;
+            ClientId == other.ClientId && Ready == other.Ready && Team == other.Team &&
+            Name.Equals(other.Name);
     }
 
     /// <summary>
@@ -84,6 +91,10 @@ namespace Bato
         readonly NetworkVariable<int> m_GameMode = new NetworkVariable<int>(0);
 
         int m_NextSpawnIndex;
+
+        // Pseudos reçus à l'approbation, en attente : ApproveConnection est appelé avant
+        // OnClientConnected, et c'est le seul endroit où la charge utile du client est lisible.
+        readonly Dictionary<ulong, string> m_PendingNames = new Dictionary<ulong, string>();
 
         void Awake()
         {
@@ -163,6 +174,10 @@ namespace Bato
         void ApproveConnection(NetworkManager.ConnectionApprovalRequest request,
                                NetworkManager.ConnectionApprovalResponse response)
         {
+            // Le pseudo voyage dans la charge utile : c'est ici, et seulement ici, qu'on peut la
+            // lire. On la met de côté pour OnClientConnected, qui suivra.
+            m_PendingNames[request.ClientNetworkId] = PlayerIdentity.FromPayload(request.Payload);
+
             // Sans salon : NGO fait apparaître le bateau tout de suite, à la place qu'on lui
             // indique ici. On n'interdit jamais l'entrée, sinon plus personne ne peut rejoindre.
             if (m_AutoStart)
@@ -193,7 +208,13 @@ namespace Bato
         {
             if (IndexOf(clientId) < 0)
             {
-                Players.Add(new LobbyPlayer { ClientId = clientId, Ready = false, Team = 1 });
+                Players.Add(new LobbyPlayer
+                {
+                    ClientId = clientId,
+                    Ready = false,
+                    Team = 1,
+                    Name = ResolveName(clientId),
+                });
             }
 
             if (ScoreIndexOf(clientId) < 0)
@@ -204,6 +225,21 @@ namespace Bato
             LobbyRevision++;
         }
 
+        /// <summary>
+        /// Pseudo mis de côté à l'approbation. Repli sur un nom générique : un client qui se
+        /// connecte sans charge utile ne doit pas apparaître sans nom dans la liste.
+        /// </summary>
+        FixedString32Bytes ResolveName(ulong clientId)
+        {
+            if (m_PendingNames.TryGetValue(clientId, out var pending))
+            {
+                m_PendingNames.Remove(clientId);
+                if (!string.IsNullOrEmpty(pending)) return new FixedString32Bytes(pending);
+            }
+
+            return new FixedString32Bytes($"Joueur {clientId}");
+        }
+
         void OnClientDisconnected(ulong clientId)
         {
             int playerIndex = IndexOf(clientId);
@@ -212,7 +248,15 @@ namespace Bato
             int scoreIndex = ScoreIndexOf(clientId);
             if (scoreIndex >= 0) Scores.RemoveAt(scoreIndex);
 
+            m_PendingNames.Remove(clientId);
             LobbyRevision++;
+        }
+
+        /// <summary>Pseudo d'un joueur, utilisable par toutes les UI. Jamais vide.</summary>
+        public string GetName(ulong clientId)
+        {
+            int index = IndexOf(clientId);
+            return index >= 0 ? Players[index].Name.ToString() : $"Joueur {clientId}";
         }
 
         void OnPlayersChanged(NetworkListEvent<LobbyPlayer> _) => LobbyRevision++;

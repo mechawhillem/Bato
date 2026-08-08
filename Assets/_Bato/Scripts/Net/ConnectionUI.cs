@@ -18,10 +18,23 @@ namespace Bato
         [SerializeField] Button m_DirectJoinButton;
         [SerializeField] Text m_StatusLabel;
 
+        [Tooltip("Facultatif. Non renseigné, le joueur garde son pseudo précédent ou en reçoit un " +
+                 "au hasard : le multijoueur reste utilisable sans ce champ.")]
+        [SerializeField] InputField m_NameField;
+
         SessionRunner Runner => SessionRunner.Instance;
 
         void Start()
         {
+            // Le champ part rempli du pseudo retenu, et le mémorise à chaque frappe : la valeur
+            // est donc déjà à jour quand on clique sur Héberger ou Rejoindre.
+            if (m_NameField)
+            {
+                m_NameField.characterLimit = PlayerIdentity.MaxBytes;
+                m_NameField.text = PlayerIdentity.Name;
+                m_NameField.onEndEdit.AddListener(value => PlayerIdentity.Name = value);
+            }
+
             if (m_HostButton) m_HostButton.onClick.AddListener(() => _ = Runner.HostAsync());
             if (m_JoinButton) m_JoinButton.onClick.AddListener(() => _ = Runner.JoinAsync(m_CodeField ? m_CodeField.text : ""));
             if (m_DirectHostButton) m_DirectHostButton.onClick.AddListener(() => Runner.HostDirect());

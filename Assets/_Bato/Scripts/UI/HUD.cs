@@ -89,7 +89,7 @@ namespace Bato
             {
                 var entry = arena.Scores[i];
                 string marker = entry.ClientId == localId ? "> " : "  ";
-                m_Builder.AppendLine($"{marker}Joueur {entry.ClientId}   {entry.Kills} / {entry.Deaths}");
+                m_Builder.AppendLine($"{marker}{arena.GetName(entry.ClientId)}   {entry.Kills} / {entry.Deaths}");
             }
 
             m_ScoreboardLabel.text = m_Builder.ToString();

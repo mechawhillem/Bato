@@ -75,10 +75,10 @@ GameObject:
   - component: {fileID: 7343461524725862688}
   - component: {fileID: 7794389421156823045}
   - component: {fileID: 9035002058919692701}
+  - component: {fileID: 4001256749224011590}
   - component: {fileID: 2800560516479960634}
   - component: {fileID: 2715936143152988639}
   - component: {fileID: 2262829610030452298}
-  - component: {fileID: 4001256749224011590}
   - component: {fileID: 1549629503717618645}
   - component: {fileID: 1368139683260005106}
   - component: {fileID: 2675132634545105627}
@@ -228,6 +228,19 @@ MonoBehaviour:
   SwitchTransformSpaceWhenParented: 0
   Interpolate: 1
   SlerpPosition: 0
+--- !u!114 &4001256749224011590
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3825198234923154726}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5424f5381c141b64180912686c750544, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Bato.BoatNetworkAuthority
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!114 &2800560516479960634
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -283,7 +296,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Features.Player.BoatMovementController
   _inputSource: {fileID: 2715936143152988639}
-  _buoyancy: {fileID: 0}
+  _buoyancy: {fileID: 2675132634545105627}
   _forwardAcceleration: 20
   _reverseAcceleration: 6
   _maxForwardSpeed: 15
@@ -297,19 +310,6 @@ MonoBehaviour:
   _jumpReleaseMultiplier: 0.35
   _airControl: 0.35
   _jumpCooldown: 0.4
---- !u!114 &4001256749224011590
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3825198234923154726}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5424f5381c141b64180912686c750544, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Bato.BoatNetworkAuthority
-  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!114 &1549629503717618645
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -403,15 +403,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: f716157ec8001417ab5ace4443219413, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.7999997
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f716157ec8001417ab5ace4443219413, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.12917
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f716157ec8001417ab5ace4443219413, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.11550903
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f716157ec8001417ab5ace4443219413, type: 3}
       propertyPath: m_LocalRotation.w
@@ -477,7 +477,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eef764d1764ce425abab4340cb419dd1, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.916
+      value: -1.69133
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eef764d1764ce425abab4340cb419dd1, type: 3}
       propertyPath: m_LocalPosition.y
@@ -485,7 +485,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eef764d1764ce425abab4340cb419dd1, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -1.673
+      value: -1.8329997
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eef764d1764ce425abab4340cb419dd1, type: 3}
       propertyPath: m_LocalRotation.w
@@ -554,7 +554,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eef764d1764ce425abab4340cb419dd1, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 2.45533
+      value: 1.68
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eef764d1764ce425abab4340cb419dd1, type: 3}
       propertyPath: m_LocalPosition.y
@@ -562,7 +562,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eef764d1764ce425abab4340cb419dd1, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -1.6800003
+      value: -1.84
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: eef764d1764ce425abab4340cb419dd1, type: 3}
       propertyPath: m_LocalRotation.w

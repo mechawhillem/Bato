@@ -1526,7 +1526,7 @@ MonoBehaviour:
   - {fileID: 1348621264}
   - {fileID: 1973128555}
   m_AutoStart: 0
-  m_StartDelay: 3
+  m_StartDelay: 0
 --- !u!114 &991114582
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2162,6 +2162,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player Camera
       objectReference: {fileID: 0}
+    - target: {fileID: 3947948632119220821, guid: a8fda97cbfdb12e478d6de089ce682a6, type: 3}
+      propertyPath: _height
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 3947948632119220821, guid: a8fda97cbfdb12e478d6de089ce682a6, type: 3}
+      propertyPath: _distance
+      value: 30
+      objectReference: {fileID: 0}
     - target: {fileID: 8024981287405013899, guid: a8fda97cbfdb12e478d6de089ce682a6, type: 3}
       propertyPath: m_Enabled
       value: 1
@@ -2311,7 +2319,7 @@ MonoBehaviour:
   NetworkConfig:
     ProtocolVersion: 0
     NetworkTransport: {fileID: 1352279281}
-    PlayerPrefab: {fileID: 3825198234923154726, guid: d2ce60e71f6b55c47bd6363ba62615b6, type: 3}
+    PlayerPrefab: {fileID: 3825198234923154726, guid: 4fbbf03e3a1f045b5b2e34b8ee3f1224, type: 3}
     Prefabs:
       NetworkPrefabsLists:
       - {fileID: 11400000, guid: 6e7ececdc4537c043b97c9d9612636f8, type: 2}

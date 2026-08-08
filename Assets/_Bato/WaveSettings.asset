@@ -18,6 +18,9 @@ MonoBehaviour:
   m_SizeVariation: 0.369
   m_TotalAmplitude: 1.4
   m_SteepnessScale: 0.85
+  m_NoiseAmplitude: 0.12
+  m_NoiseScale: 0.18
+  m_NoiseSpeed: 0.35
   m_Waves:
   - Direction: {x: 0.8460737, y: 0.5330659}
     Wavelength: 29.282135

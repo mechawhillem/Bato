@@ -45,6 +45,7 @@ namespace Bato.Water
         static readonly int s_WaveTimeId = Shader.PropertyToID("_BatoWaveTime");
         static readonly int s_SeaStateId = Shader.PropertyToID("_BatoSeaState");
         static readonly int s_WaveHeightId = Shader.PropertyToID("_BatoWaveHeight");
+        static readonly int s_NoiseId = Shader.PropertyToID("_BatoNoise");
 
         readonly Vector4[] m_DirAmpBuffer = new Vector4[WaveSettings.MaxWaves];
         readonly Vector4[] m_ShapeBuffer = new Vector4[WaveSettings.MaxWaves];
@@ -161,6 +162,13 @@ namespace Bato.Water
             // dégradés, et retrouver le même q que le CPU. C'est donc une valeur du miroir, pas
             // un simple réglage de rendu.
             Shader.SetGlobalFloat(s_WaveHeightId, TotalAmplitudeScaled(amplitudeScale));
+
+            // x = amplitude (état de mer inclus), y = finesse, z = vitesse.
+            Shader.SetGlobalVector(s_NoiseId, new Vector4(
+                m_Settings.NoiseAmplitude * amplitudeScale,
+                m_Settings.NoiseScale,
+                m_Settings.NoiseSpeed,
+                0f));
         }
 
         // ------------------------------------------------------- Échantillonnage
@@ -216,6 +224,16 @@ namespace Bato.Water
                 result.x += q * amplitude * direction.x * cos;
                 result.z += q * amplitude * direction.y * cos;
                 result.y += amplitude * sin;
+            }
+
+            // Le bruit ne touche que la hauteur : s'il déplaçait aussi le plan horizontal, il
+            // entrerait dans l'inversion de Gerstner faite par SolveGridPosition, qui ne
+            // convergerait plus.
+            float noiseAmplitude = m_Settings.NoiseAmplitude * amplitudeScale;
+            if (noiseAmplitude > 0f)
+            {
+                result.y += noiseAmplitude * WaveNoise.Sample(
+                    gridPosition.x, gridPosition.y, m_Settings.NoiseScale, time * m_Settings.NoiseSpeed);
             }
 
             return result;
@@ -288,6 +306,17 @@ namespace Bato.Water
                 nx -= direction.x * wa * Mathf.Cos(phase);
                 nz -= direction.y * wa * Mathf.Cos(phase);
                 ny += q * wa * Mathf.Sin(phase);
+            }
+
+            // Pente du bruit, sinon l'éclairage et le redressement du bateau ignoreraient
+            // complètement les bosses qu'on vient d'ajouter à la hauteur.
+            float noiseAmplitude = m_Settings.NoiseAmplitude * amplitudeScale;
+            if (noiseAmplitude > 0f)
+            {
+                var slope = WaveNoise.Gradient(
+                    gridPosition.x, gridPosition.y, m_Settings.NoiseScale, time * m_Settings.NoiseSpeed);
+                nx -= slope.x * noiseAmplitude;
+                nz -= slope.y * noiseAmplitude;
             }
 
             return new Vector3(nx, 1f - ny, nz).normalized;

@@ -82,8 +82,66 @@ Shader "Bato/Ocean"
         float  _BatoWaveTime;
         float  _BatoSeaState;
         float  _BatoWaveHeight;      // somme des amplitudes, état de mer inclus
+        float4 _BatoNoise;           // x = amplitude, y = finesse, z = vitesse
 
         #define BATO_GRAVITY 9.81
+
+        // ---- Bruit : miroir exact de WaveNoise.cs ----
+        // Hash en entiers 32 bits, exact des deux côtés. Une variante à base de sin() dériverait
+        // entre le CPU et le GPU, et le bateau flotterait sur une surface décalée de l'affichée.
+
+        uint BatoNoiseHash(int x, int y)
+        {
+            uint n = (uint)(x * 374761393 + y * 668265263);
+            n = (n ^ (n >> 13)) * 1274126177u;
+            return n ^ (n >> 16);
+        }
+
+        float BatoNoiseHash01(int x, int y)
+        {
+            return (BatoNoiseHash(x, y) & 0xFFFFFFu) / 16777216.0;
+        }
+
+        float BatoValueNoise(float x, float y)
+        {
+            float fx = floor(x);
+            float fy = floor(y);
+            int ix = (int)fx;
+            int iy = (int)fy;
+
+            float tx = x - fx;
+            float ty = y - fy;
+            tx = tx * tx * (3.0 - 2.0 * tx);
+            ty = ty * ty * (3.0 - 2.0 * ty);
+
+            float a = BatoNoiseHash01(ix,     iy);
+            float b = BatoNoiseHash01(ix + 1, iy);
+            float c = BatoNoiseHash01(ix,     iy + 1);
+            float d = BatoNoiseHash01(ix + 1, iy + 1);
+
+            return lerp(lerp(a, b, tx), lerp(c, d, tx), ty);
+        }
+
+        float BatoNoiseSample(float2 p, float scale, float time)
+        {
+            float sx = p.x * scale;
+            float sz = p.y * scale;
+
+            float n  = BatoValueNoise(sx + time * 0.35, sz - time * 0.35) * 0.65;
+            n       += BatoValueNoise(sx * 2.17 - time * 0.8, sz * 2.17 + time * 0.56) * 0.35;
+
+            return n * 2.0 - 1.0;
+        }
+
+        float2 BatoNoiseGradient(float2 p, float scale, float time)
+        {
+            const float e = 0.5;   // = WaveNoise.GradientEpsilon
+            float dx = BatoNoiseSample(p + float2(e, 0), scale, time)
+                     - BatoNoiseSample(p - float2(e, 0), scale, time);
+            float dz = BatoNoiseSample(p + float2(0, e), scale, time)
+                     - BatoNoiseSample(p - float2(0, e), scale, time);
+            return float2(dx, dz) / (2.0 * e);
+        }
 
         // Miroir exact de WaveField.Displacement() / SampleNormal().
         void BatoGerstner(float2 gridPosition, out float3 displacement, out float3 normalWS, out float pinch)
@@ -128,6 +186,19 @@ Shader "Bato/Ocean"
                 ny += q * wa * s;
             }
 
+            // Bruit : hauteur seule, jamais le plan horizontal — voir WaveField.Displacement().
+            float noiseAmplitude = _BatoNoise.x;
+            if (noiseAmplitude > 0.0)
+            {
+                float noiseTime = _BatoWaveTime * _BatoNoise.z;
+
+                displacement.y += noiseAmplitude * BatoNoiseSample(gridPosition, _BatoNoise.y, noiseTime);
+
+                float2 slope = BatoNoiseGradient(gridPosition, _BatoNoise.y, noiseTime);
+                nx -= slope.x * noiseAmplitude;
+                nz -= slope.y * noiseAmplitude;
+            }
+
             normalWS = normalize(float3(nx, 1.0 - ny, nz));
 
             // ny mesure la compression horizontale de la surface : il vaut 0 au repos et tend
@@ -157,7 +228,7 @@ Shader "Bato/Ocean"
             #pragma vertex Vertex
             #pragma fragment Fragment
             #pragma multi_compile_fog
-            #pragma target 3.0
+            #pragma target 4.5
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
@@ -260,7 +331,7 @@ Shader "Bato/Ocean"
             HLSLPROGRAM
             #pragma vertex DepthVertex
             #pragma fragment DepthFragment
-            #pragma target 3.0
+            #pragma target 4.5
 
             struct DepthAttributes
             {

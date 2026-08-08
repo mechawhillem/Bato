@@ -151,7 +151,7 @@ namespace Bato
                 {
                     var player = arena.Players[i];
                     string team = teamMode ? $" — Équipe {player.Team}" : string.Empty;
-                    m_Builder.AppendLine($"{(player.Ready ? "[OK]" : "[ ]")} Joueur {player.ClientId}{team}");
+                    m_Builder.AppendLine($"{(player.Ready ? "[OK]" : "[ ]")} {player.Name}{team}");
                 }
                 m_PlayerListLabel.text = m_Builder.ToString();
             }

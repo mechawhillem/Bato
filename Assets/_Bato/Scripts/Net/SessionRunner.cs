@@ -89,6 +89,7 @@ namespace Bato
         {
             if (IsBusy) return;
             IsBusy = true;
+            PlayerIdentity.ApplyToConnectionData();
             try
             {
                 await EnsureSignedInAsync();
@@ -121,6 +122,7 @@ namespace Bato
             }
 
             IsBusy = true;
+            PlayerIdentity.ApplyToConnectionData();
             try
             {
                 await EnsureSignedInAsync();
@@ -148,6 +150,7 @@ namespace Bato
         public void HostDirect()
         {
             if (IsBusy) return;
+            PlayerIdentity.ApplyToConnectionData();
             StartCoroutine(HostDirectCoroutine());
         }
 
@@ -239,6 +242,7 @@ namespace Bato
         {
             if (!string.IsNullOrWhiteSpace(address)) m_DirectAddress = address.Trim();
             if (IsBusy) return;
+            PlayerIdentity.ApplyToConnectionData();
             StartCoroutine(JoinDirectCoroutine());
         }
 
