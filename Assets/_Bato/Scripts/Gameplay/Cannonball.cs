@@ -13,7 +13,7 @@ namespace Bato
     {
         [SerializeField] int m_Damage = 20;
         [SerializeField] float m_Lifetime = 4f;
-        [SerializeField] GameObject m_ImpactVfxPrefab;
+        [SerializeField] float m_SplashScale = 1.3f;
 
         Rigidbody m_Rigidbody;
         ulong m_ShooterClientId;
@@ -43,7 +43,7 @@ namespace Bato
 
             if (Time.time >= m_DespawnTime)
             {
-                Consume(transform.position);
+                Consume(transform.position, hitHull: false);
                 return;
             }
 
@@ -52,7 +52,7 @@ namespace Bato
             var field = WaveField.Instance;
             if (field != null && transform.position.y < field.SampleHeight(transform.position))
             {
-                Consume(transform.position);
+                Consume(transform.position, hitHull: false);
             }
         }
 
@@ -60,6 +60,7 @@ namespace Bato
         {
             if (!IsServer || m_Consumed) return;
 
+            bool hitHull = false;
             var health = other.GetComponentInParent<BoatHealth>();
             if (health != null)
             {
@@ -68,22 +69,34 @@ namespace Bato
                 if (!health.IsAlive) return;
 
                 health.ApplyDamage(m_Damage, m_ShooterClientId);
+                hitHull = true;
             }
 
-            Consume(transform.position);
+            Consume(transform.position, hitHull);
         }
 
-        void Consume(Vector3 position)
+        void Consume(Vector3 position, bool hitHull)
         {
             m_Consumed = true;
-            if (m_ImpactVfxPrefab) ImpactRpc(position);
+            ImpactRpc(position, m_Rigidbody.linearVelocity.normalized, hitHull);
             NetworkObject.Despawn();
         }
 
+        /// <summary>
+        /// L'impact est décidé par le serveur, mais l'effet est joué localement par chacun :
+        /// on ne diffuse qu'un point et un drapeau, jamais de particules.
+        /// </summary>
         [Rpc(SendTo.Everyone)]
-        void ImpactRpc(Vector3 position)
+        void ImpactRpc(Vector3 position, Vector3 direction, bool hitHull)
         {
-            if (m_ImpactVfxPrefab) Instantiate(m_ImpactVfxPrefab, position, Quaternion.identity);
+            if (hitHull)
+            {
+                WaterEffects.HullImpact(position, -direction);
+            }
+            else
+            {
+                WaterEffects.Splash(position, m_SplashScale);
+            }
         }
     }
 }
