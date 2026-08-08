@@ -116,5 +116,63 @@ namespace Bato.Water
             system.Play();
             return system;
         }
+
+        // ------------------------------------- Systèmes fournis à la main
+
+        /// <summary>
+        /// Met un ParticleSystem câblé dans l'inspecteur en état d'être piloté par Emit().
+        ///
+        /// On ne touche à AUCUN de ses réglages visuels : c'est tout l'intérêt d'en fournir un.
+        /// On se contente de le démarrer (un système arrêté ne simule pas les particules qu'on lui
+        /// donne) et de signaler la seule erreur de config qui rend le résultat incompréhensible.
+        /// </summary>
+        public static void PrepareForManualEmission(ParticleSystem system, Object owner)
+        {
+            if (system == null) return;
+
+            if (system.emission.enabled)
+            {
+                Debug.LogWarning(
+                    $"[Bato] Le ParticleSystem '{system.name}' a son module Emission activé : il va " +
+                    "cracher des particules tout seul EN PLUS de celles que le jeu lui demande. " +
+                    "Décoche Emission (Rate over Time / Bursts) et garde tout le reste.", owner);
+            }
+
+            if (!system.isPlaying) system.Play();
+        }
+
+        /// <summary>
+        /// Convertit une position monde vers l'espace de simulation du système.
+        ///
+        /// EmitParams.position n'est PAS toujours en monde : elle est exprimée dans l'espace de
+        /// simulation. Un système réglé en Local recevrait donc nos positions absolues comme des
+        /// offsets locaux, et l'écume partirait à des dizaines de mètres du bateau.
+        /// </summary>
+        public static Vector3 ToSimulationSpace(ParticleSystem system, Vector3 worldPosition)
+        {
+            var reference = SimulationReference(system);
+            return reference != null ? reference.InverseTransformPoint(worldPosition) : worldPosition;
+        }
+
+        /// <summary>Idem pour une vitesse : direction et échelle, sans translation.</summary>
+        public static Vector3 VelocityToSimulationSpace(ParticleSystem system, Vector3 worldVelocity)
+        {
+            var reference = SimulationReference(system);
+            return reference != null ? reference.InverseTransformDirection(worldVelocity) : worldVelocity;
+        }
+
+        /// <summary>Transform dans lequel le système simule, ou null s'il simule en monde.</summary>
+        static Transform SimulationReference(ParticleSystem system)
+        {
+            if (system == null) return null;
+
+            var main = system.main;
+            switch (main.simulationSpace)
+            {
+                case ParticleSystemSimulationSpace.World: return null;
+                case ParticleSystemSimulationSpace.Custom: return main.customSimulationSpace;
+                default: return system.transform;
+            }
+        }
     }
 }

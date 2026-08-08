@@ -16,6 +16,26 @@ namespace Bato.Water
     /// </summary>
     public class BoatWake : MonoBehaviour
     {
+        [Header("Système de particules")]
+        [Tooltip("Ton propre ParticleSystem, réglé dans l'inspecteur. Vide = celui généré par code. " +
+                 "Mets-le en Simulation Space = World : l'écume doit rester dans le sillage, pas " +
+                 "suivre la coque. Et décoche son module Emission, c'est le jeu qui émet.")]
+        [SerializeField] ParticleSystem m_CustomSystem;
+
+        [Tooltip("Coché, le jeu impose la taille et la couleur de chaque particule et écrase donc " +
+                 "les tiennes. Décoche-le pour que Start Size, Start Color, Color/Size over " +
+                 "Lifetime de TON système reprennent la main.")]
+        [SerializeField] bool m_OverrideSizeAndColor = true;
+
+        [Tooltip("Coché, le jeu impose la vitesse initiale (écartement en vague d'étrave). " +
+                 "Décoche-le pour piloter le mouvement avec Start Speed, Shape, Velocity over " +
+                 "Lifetime et Noise.")]
+        [SerializeField] bool m_OverrideVelocity = true;
+
+        [Tooltip("Points d'émission explicites : étrave, poupe, flancs. Vide = réparti " +
+                 "automatiquement le long de la coque à partir de son collider.")]
+        [SerializeField] Transform[] m_EmitPoints;
+
         [Header("Coque")]
         [Tooltip("Vide = le premier collider trouvé. Sert à dimensionner la zone d'émission.")]
         [SerializeField] Collider m_HullCollider;
@@ -53,14 +73,39 @@ namespace Bato.Water
                 ? box.size * 0.5f
                 : new Vector3(0.8f, 0.6f, 2.2f);
 
-            // Système sur un enfant dédié pour ne pas encombrer le bateau. Les particules sont
-            // simulées en espace monde et émises à des positions absolues : le roulis de la coque
-            // ne les entraîne pas.
-            var host = new GameObject("Wake");
-            host.transform.SetParent(transform, false);
-            m_System = FoamParticles.Create(host, maxParticles: 600, lifetime: 1.6f, size: 0.5f);
+            if (m_CustomSystem != null)
+            {
+                m_System = m_CustomSystem;
+                FoamParticles.PrepareForManualEmission(m_System, this);
+                WarnIfWakeFollowsHull();
+            }
+            else
+            {
+                // Système sur un enfant dédié pour ne pas encombrer le bateau. Les particules sont
+                // simulées en espace monde et émises à des positions absolues : le roulis de la
+                // coque ne les entraîne pas.
+                var host = new GameObject("Wake");
+                host.transform.SetParent(transform, false);
+                m_System = FoamParticles.Create(host, maxParticles: 600, lifetime: 1.6f, size: 0.5f);
+            }
 
             m_PreviousPosition = transform.position;
+        }
+
+        /// <summary>
+        /// Un sillage simulé dans le repère du bateau est traîné par la coque : l'écume avance avec
+        /// le navire au lieu de rester là où elle est née. C'est l'erreur qui donne l'impression
+        /// que « les particules ne marchent pas », et elle ne se voit qu'en mouvement.
+        /// </summary>
+        void WarnIfWakeFollowsHull()
+        {
+            if (m_System.main.simulationSpace != ParticleSystemSimulationSpace.Local) return;
+            if (!m_System.transform.IsChildOf(transform)) return;
+
+            Debug.LogWarning(
+                $"[Bato] Le ParticleSystem de sillage '{m_System.name}' est en Simulation Space = " +
+                "Local sous le bateau : l'écume va suivre la coque au lieu de rester derrière. " +
+                "Passe-le en World.", this);
         }
 
         void LateUpdate()
@@ -128,13 +173,7 @@ namespace Bato.Water
 
             for (int i = 0; i < count; i++)
             {
-                // Réparti le long de la coque, de l'étrave à la poupe.
-                float along = Random.Range(-1f, 1f);
-                float across = Random.value < 0.5f ? -1f : 1f;
-
-                var origin = transform.position
-                             + heading * (along * m_HullExtents.z)
-                             + side * (across * m_HullExtents.x * Random.Range(0.7f, 1.1f));
+                Vector3 origin = NextEmitOrigin(heading, side, out float across);
                 origin.y = waterHeight;
 
                 // L'écume s'écarte sur les côtés et reste derrière le bateau.
@@ -142,15 +181,61 @@ namespace Bato.Water
                              + Vector3.up * Random.Range(0.1f, 0.6f)
                              - heading * (speed * 0.15f);
 
-                m_System.Emit(new ParticleSystem.EmitParams
-                {
-                    position = origin,
-                    velocity = spread * intensity,
-                    startSize = Random.Range(0.2f, 0.5f) * (0.6f + intensity),
-                    startColor = Color.white,
-                    applyShapeToPosition = false,
-                }, 1);
+                Emit(origin, spread * intensity, Random.Range(0.2f, 0.5f) * (0.6f + intensity));
             }
+        }
+
+        /// <summary>
+        /// Point de naissance d'une particule, et de quel bord elle sort (pour l'écartement).
+        /// Soit un des points câblés à la main, soit un tirage le long de la coque.
+        /// </summary>
+        Vector3 NextEmitOrigin(Vector3 heading, Vector3 side, out float across)
+        {
+            if (m_EmitPoints != null && m_EmitPoints.Length > 0)
+            {
+                var point = m_EmitPoints[Random.Range(0, m_EmitPoints.Length)];
+                if (point != null)
+                {
+                    // Le bord se déduit de la position du point : une écume émise à bâbord doit
+                    // s'écarter vers bâbord, sinon elle traverse la coque.
+                    across = Vector3.Dot(point.position - transform.position, side) < 0f ? -1f : 1f;
+                    return point.position;
+                }
+            }
+
+            float along = Random.Range(-1f, 1f);
+            across = Random.value < 0.5f ? -1f : 1f;
+
+            return transform.position
+                   + heading * (along * m_HullExtents.z)
+                   + side * (across * m_HullExtents.x * Random.Range(0.7f, 1.1f));
+        }
+
+        /// <summary>
+        /// Émet une particule en respectant ce que l'utilisateur a choisi de garder pour lui.
+        /// Chaque champ posé sur EmitParams ÉCRASE le réglage correspondant du système, d'où les
+        /// interrupteurs : ce qu'on ne renseigne pas reste piloté par l'inspecteur.
+        /// </summary>
+        void Emit(Vector3 worldPosition, Vector3 worldVelocity, float size)
+        {
+            var emitParams = new ParticleSystem.EmitParams
+            {
+                position = FoamParticles.ToSimulationSpace(m_System, worldPosition),
+                applyShapeToPosition = false,
+            };
+
+            if (m_OverrideVelocity)
+            {
+                emitParams.velocity = FoamParticles.VelocityToSimulationSpace(m_System, worldVelocity);
+            }
+
+            if (m_OverrideSizeAndColor)
+            {
+                emitParams.startSize = size;
+                emitParams.startColor = Color.white;
+            }
+
+            m_System.Emit(emitParams, 1);
         }
     }
 }
