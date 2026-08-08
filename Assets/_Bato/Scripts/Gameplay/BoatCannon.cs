@@ -19,23 +19,24 @@ namespace Bato
         [SerializeField] Transform m_MuzzleLeft;
         [Tooltip("Canon tribord / droit — touche P (Attack).")]
         [SerializeField] Transform m_MuzzleRight;
-        [SerializeField] float m_Cooldown = 0.8f;
+        [SerializeField] float m_Cooldown = 0.55f;
         [Tooltip("Vitesse du tir tap (presque droit).")]
-        [SerializeField] float m_MinMuzzleSpeed = 24f;
+        [SerializeField] float m_MinMuzzleSpeed = 42f;
         [Tooltip("Vitesse à charge max.")]
-        [SerializeField] float m_MaxMuzzleSpeed = 38f;
+        [SerializeField] float m_MaxMuzzleSpeed = 68f;
         [Tooltip("Angle vers le haut au tap — quasi droit (petite courbe).")]
-        [SerializeField] float m_MinElevation = 3f;
+        [SerializeField] float m_MinElevation = 2f;
         [Tooltip("Angle vers le haut à charge max.")]
-        [SerializeField] float m_MaxElevation = 38f;
+        [SerializeField] float m_MaxElevation = 18f;
         [Tooltip("Temps pour atteindre la puissance max en maintenant la touche.")]
-        [SerializeField] float m_ChargeDuration = 2.5f;
+        [SerializeField] float m_ChargeDuration = 0.7f;
         [Tooltip(">1 = la courbe grossit lentement au début, plus vite ensuite.")]
-        [SerializeField] float m_ArcEase = 1.75f;
+        [SerializeField] float m_ArcEase = 1.15f;
 
         BoatNetworkAuthority m_Authority;
         BoatHealth m_Health;
         CannonAimPreview m_AimPreview;
+        Rigidbody m_Rigidbody;
         float m_LocalNextFireLeft;
         float m_LocalNextFireRight;
         float m_ServerNextFireLeft;
@@ -50,6 +51,7 @@ namespace Bato
         {
             m_Authority = GetComponent<BoatNetworkAuthority>();
             m_Health = GetComponent<BoatHealth>();
+            m_Rigidbody = GetComponent<Rigidbody>();
             m_AimPreview = GetComponent<CannonAimPreview>();
             if (m_AimPreview == null) m_AimPreview = gameObject.AddComponent<CannonAimPreview>();
         }
@@ -88,17 +90,20 @@ namespace Bato
 
             Transform muzzle = null;
             float power = 0f;
+            byte side = k_Right;
 
             // Priorité au côté en cours de charge (le plus avancé si les deux).
             if (rightPower >= leftPower && rightPower > 0f)
             {
                 muzzle = m_MuzzleRight;
                 power = rightPower;
+                side = k_Right;
             }
             else if (leftPower > 0f)
             {
                 muzzle = m_MuzzleLeft;
                 power = leftPower;
+                side = k_Left;
             }
 
             if (muzzle == null)
@@ -107,32 +112,50 @@ namespace Bato
                 return;
             }
 
-            Vector3 velocity = GetLaunchVelocity(muzzle, power);
-            Vector3 origin = muzzle.position + velocity.normalized * k_MuzzleOffset;
-            m_AimPreview.Show(origin, velocity);
+            // Preview sans vitesse bateau : le fil reste perpendiculaire au flanc.
+            Vector3 aimDir = GetAimDirection(side, power);
+            float speed = Mathf.Lerp(m_MinMuzzleSpeed, m_MaxMuzzleSpeed, Mathf.Clamp01(power));
+            Vector3 origin = muzzle.position + aimDir * k_MuzzleOffset;
+            m_AimPreview.Show(origin, aimDir * speed);
         }
 
-        /// <summary>
-        /// Tap (power 0) ≈ tir droit. Plus on charge, plus l'angle monte — lentement au début.
-        /// </summary>
-        Vector3 GetLaunchVelocity(Transform muzzle, float power)
+        Vector3 GetBoatVelocity()
+        {
+            if (m_Rigidbody == null) m_Rigidbody = GetComponent<Rigidbody>();
+            return m_Rigidbody != null ? m_Rigidbody.linearVelocity : Vector3.zero;
+        }
+
+        /// <summary>Direction horizontale strictement perpendiculaire au bateau (±right).</summary>
+        Vector3 GetSideFlat(byte side)
+        {
+            Vector3 flat = side == k_Left ? -transform.right : transform.right;
+            flat.y = 0f;
+            if (flat.sqrMagnitude < 0.001f)
+                flat = side == k_Left ? -Vector3.right : Vector3.right;
+            return flat.normalized;
+        }
+
+        /// <summary>Direction de tir (perpendiculaire + élévation selon la charge).</summary>
+        Vector3 GetAimDirection(byte side, float power)
         {
             power = Mathf.Clamp01(power);
+            Vector3 flat = GetSideFlat(side);
 
-            Vector3 flat = muzzle != null ? muzzle.forward : transform.forward;
-            flat.y = 0f;
-            if (flat.sqrMagnitude < 0.001f) flat = transform.forward;
-            flat.y = 0f;
-            flat.Normalize();
-
-            // Ease-in : au début la courbe reste toute petite, puis elle grandit.
             float arc = Mathf.Pow(power, Mathf.Max(1f, m_ArcEase));
             float elevationDeg = Mathf.Lerp(m_MinElevation, m_MaxElevation, arc);
             float elevationRad = elevationDeg * Mathf.Deg2Rad;
-            Vector3 direction = (flat * Mathf.Cos(elevationRad) + Vector3.up * Mathf.Sin(elevationRad)).normalized;
+            return (flat * Mathf.Cos(elevationRad) + Vector3.up * Mathf.Sin(elevationRad)).normalized;
+        }
 
+        /// <summary>
+        /// Tir perpendiculaire + vitesse bateau pour que le boulet suive le mouvement.
+        /// </summary>
+        Vector3 GetLaunchVelocity(byte side, float power, Vector3 boatVelocity)
+        {
+            power = Mathf.Clamp01(power);
+            Vector3 direction = GetAimDirection(side, power);
             float speed = Mathf.Lerp(m_MinMuzzleSpeed, m_MaxMuzzleSpeed, power);
-            return direction * speed;
+            return direction * speed + boatVelocity;
         }
 
         void UpdateSide(InputAction action, byte side, ref float chargeStart, ref float nextLocal)
@@ -149,7 +172,7 @@ namespace Bato
                 float power = GetChargeProgress(chargeStart);
                 chargeStart = -1f;
                 nextLocal = Time.time + m_Cooldown;
-                FireRpc(side, power);
+                FireRpc(side, power, GetBoatVelocity());
                 return;
             }
 
@@ -166,7 +189,7 @@ namespace Bato
         static void CancelCharge(ref float chargeStart) => chargeStart = -1f;
 
         [Rpc(SendTo.Server)]
-        void FireRpc(byte side, float power)
+        void FireRpc(byte side, float power, Vector3 boatVelocity)
         {
             if (m_Health != null && !m_Health.IsAlive) return;
 
@@ -196,14 +219,36 @@ namespace Bato
                 return;
             }
 
-            var velocity = GetLaunchVelocity(muzzle, power);
-            var direction = velocity.normalized;
+            Vector3 aimDir = GetAimDirection(side, power);
+            Vector3 velocity = GetLaunchVelocity(side, power, boatVelocity);
             var ball = Instantiate(
                 m_CannonballPrefab,
-                muzzle.position + direction * k_MuzzleOffset,
-                Quaternion.LookRotation(direction));
+                muzzle.position + aimDir * k_MuzzleOffset,
+                Quaternion.LookRotation(aimDir));
             ball.GetComponent<NetworkObject>().Spawn();
             ball.GetComponent<Cannonball>().Launch(velocity, OwnerClientId);
+        }
+
+        /// <summary>Serveur : tire un boulet spécial (feu / chaîne) depuis le museau droit, ou gauche à défaut.</summary>
+        public void ServerFireSpecial(CannonballEffect effect, float speed, Vector3 boatVelocity)
+        {
+            if (!IsServer) return;
+            if (m_Health != null && !m_Health.IsAlive) return;
+            if (m_CannonballPrefab == null) return;
+
+            var muzzle = m_MuzzleRight != null ? m_MuzzleRight : m_MuzzleLeft;
+            byte side = m_MuzzleRight != null ? k_Right : k_Left;
+            if (muzzle == null) muzzle = transform;
+
+            Vector3 aimDir = GetAimDirection(side, 0f);
+            Vector3 velocity = aimDir * speed + boatVelocity;
+
+            var ball = Instantiate(
+                m_CannonballPrefab,
+                muzzle.position + aimDir * k_MuzzleOffset,
+                Quaternion.LookRotation(aimDir));
+            ball.GetComponent<NetworkObject>().Spawn();
+            ball.GetComponent<Cannonball>().Launch(velocity, OwnerClientId, effect);
         }
     }
 }

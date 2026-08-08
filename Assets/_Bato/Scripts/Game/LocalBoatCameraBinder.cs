@@ -53,7 +53,7 @@ namespace Bato
                 return;
             }
 
-            m_Camera.SetTarget(authority.transform, authority.GetComponent<Rigidbody>());
+            m_Camera.SetTarget(authority.transform, authority.GetComponent<Rigidbody>(), snapBehind: true);
             m_BoundPlayer = playerObject;
         }
 
@@ -61,7 +61,7 @@ namespace Bato
         {
             if (m_BoundPlayer == null) return;
 
-            m_Camera.SetTarget(null, null);
+            m_Camera.SetTarget(null, null, snapBehind: false);
             m_BoundPlayer = null;
         }
     }

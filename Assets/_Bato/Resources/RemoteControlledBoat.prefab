@@ -17,7 +17,7 @@ GameObject:
   - component: {fileID: 6306839182132408674}
   - component: {fileID: 6353844412846541723}
   m_Layer: 0
-  m_Name: Cannonball
+  m_Name: RemoteControlledBoat
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -33,7 +33,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 3.5, y: 3.5, z: 3.5}
+  m_LocalScale: {x: 1.2, y: 0.45, z: 2.2}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -45,7 +45,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5878007302481284183}
-  m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!135 &6336215979476851392
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -155,13 +155,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3879704975
+  GlobalObjectIdHash: 2918475632
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
-  m_InScenePlaced: 1
+  m_InScenePlaced: 0
   ActiveSceneSynchronization: 0
   SceneMigrationSynchronization: 0
   SpawnWithObservers: 1
@@ -193,7 +193,7 @@ MonoBehaviour:
   RotationMaxInterpolationTime: 0.1
   ScaleLerpSmoothing: 1
   ScaleMaxInterpolationTime: 0.1
-  AuthorityMode: 0
+  AuthorityMode: 1
   TickSyncChildren: 0
   UseUnreliableDeltas: 0
   SyncPositionX: 1
@@ -224,10 +224,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 5878007302481284183}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2901099593b533e43a65a19f240f3b01, type: 3}
+  m_Script: {fileID: 11500000, guid: c8e4a1b2d3f5467788990aabbccdde01, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Bato.Cannonball
+  m_EditorClassIdentifier: Assembly-CSharp::Bato.RemoteControlledBoat
   ShowTopMostFoldoutHeaderGroup: 1
-  m_Damage: 20
-  m_Lifetime: 6
-  m_ImpactVfxPrefab: {fileID: 0}
+  m_Acceleration: 40
+  m_MaxSpeed: 16
+  m_SteerTorque: 40
+  m_ExplosionRadius: 8
+  m_ExplosionDamage: 35
+  m_ExplosionVfxPrefab: {fileID: 0}

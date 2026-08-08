@@ -61,6 +61,9 @@ namespace Bato
     {
         public static ArenaBootstrap Instance { get; private set; }
 
+        /// <summary>Servé quand la partie démarre (serveur). Les systèmes d'objets s'y branchent.</summary>
+        public static event Action MatchStarted;
+
         [SerializeField] Transform[] m_SpawnPoints;
 
         [Tooltip("Coché : chacun reçoit son bateau dès la connexion, sans passer par le salon. " +
@@ -99,6 +102,9 @@ namespace Bato
         void Awake()
         {
             Instance = this;
+
+            if (GetComponent<ArenaPickupSystem>() == null)
+                gameObject.AddComponent<ArenaPickupSystem>();
 
             // Callback d'approbation AVANT tout StartHost (plus sûr que Start).
             var nm = NetworkManager.Singleton;
@@ -146,6 +152,7 @@ namespace Bato
             {
                 m_MatchStarted.Value = true;
                 m_StartTime.Value = NetworkManager.ServerTime.Time;
+                MatchStarted?.Invoke();
             }
         }
 
@@ -340,6 +347,7 @@ namespace Bato
 
             m_MatchStarted.Value = true;
             m_StartTime.Value = NetworkManager.ServerTime.Time + m_StartDelay;
+            MatchStarted?.Invoke();
             StartCoroutine(SpawnPlayersAfterDelay());
         }
 

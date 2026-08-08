@@ -38,6 +38,10 @@ namespace Bato
             m_Movement = GetComponent<BoatMovementController>();
             m_Buoyancy = GetComponent<BoatBuoyancy>();
 
+            // Avant Spawn : les NetworkBehaviour doivent déjà être présents.
+            if (GetComponent<BoatStatusEffects>() == null) gameObject.AddComponent<BoatStatusEffects>();
+            if (GetComponent<BoatLoadout>() == null) gameObject.AddComponent<BoatLoadout>();
+
             // Tout est coupé tant qu'on ne sait pas si ce bateau nous appartient. Awake tourne
             // même sur un composant désactivé, donc BoatMovementController configure quand même
             // le Rigidbody (gravité, damping, contraintes) sur tous les clients.
@@ -68,6 +72,19 @@ namespace Bato
         public void SetControlEnabled(bool value)
         {
             if (m_PlayerInput) m_PlayerInput.enabled = value;
+            if (m_InputSource) m_InputSource.enabled = value;
+            if (m_Movement) m_Movement.enabled = value;
+
+            if (!value && m_Rigidbody != null && !m_Rigidbody.isKinematic)
+            {
+                m_Rigidbody.linearVelocity = Vector3.zero;
+                m_Rigidbody.angularVelocity = Vector3.zero;
+            }
+        }
+
+        /// <summary>Coupe seulement le bateau (garde PlayerInput pour piloter une barque RC).</summary>
+        public void SetBoatDriveEnabled(bool value)
+        {
             if (m_InputSource) m_InputSource.enabled = value;
             if (m_Movement) m_Movement.enabled = value;
 

@@ -234,20 +234,30 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Features.Player.BoatMovementController
   _inputSource: {fileID: 2715936143152988639}
-  _buoyancy: {fileID: 0}
-  _forwardAcceleration: 30
-  _reverseAcceleration: 20
-  _maxForwardSpeed: 30
-  _maxReverseSpeed: 20
-  _linearDamping: 1.5
-  _steeringTorque: 8
-  _angularDamping: 3
-  _jumpImpulse: 8
-  _jumpHoldAcceleration: 15
-  _maxJumpHoldTime: 0.35
-  _jumpReleaseMultiplier: 0.35
-  _airControl: 0.35
-  _jumpCooldown: 0.4
+  _buoyancy: {fileID: 1756982201260541780}
+  _forwardAcceleration: 48
+  _reverseAcceleration: 36
+  _brakeAcceleration: 55
+  _maxForwardSpeed: 22
+  _maxReverseSpeed: 12
+  _linearDamping: 0.35
+  _coastDamping: 1.4
+  _steeringTorque: 36
+  _angularDamping: 7
+  _minSteerFactor: 0.85
+  _highSpeedSteerFactor: 0.7
+  _jumpImpulse: 12
+  _doubleJumpImpulse: 10
+  _airControl: 0.75
+  _jumpCooldown: 0.15
+  _dodgeWindow: 1.25
+  _ascentGravityMultiplier: 1.6
+  _fallGravityMultiplier: 4.2
+  _airLinearDamping: 0.02
+  _dodgeStickThreshold: 0.35
+  _dodgeTorque: 14
+  _dodgeBoost: 32
+  _dodgeDuration: 0.45
 --- !u!114 &1756982201260541780
 MonoBehaviour:
   m_ObjectHideFlags: 0
