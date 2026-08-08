@@ -272,9 +272,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Bato.BoatCannon
   ShowTopMostFoldoutHeaderGroup: 1
   m_CannonballPrefab: {fileID: 5878007302481284183, guid: d592856f8a096934aa8993c250a3dbd3, type: 3}
-  m_Muzzles:
-  - {fileID: 0}
-  - {fileID: 0}
+  m_MuzzleLeft: {fileID: 0}
+  m_MuzzleRight: {fileID: 0}
   m_Cooldown: 0.8
   m_MuzzleSpeed: 26
 --- !u!1001 &3498810760323043151

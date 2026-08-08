@@ -12,7 +12,7 @@ using UnityEngine.InputSystem.UI;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Bato.EditorTools
+namespace Bato.EditorTools 
 {
     /// <summary>
     /// Génère toute la scène de jeu et les prefabs réseau en un clic.
@@ -198,7 +198,8 @@ namespace Bato.EditorTools
             var cannon = root.AddComponent<BoatCannon>();
 
             SetField(cannon, "m_CannonballPrefab", ballPrefab);
-            SetArrayField(cannon, "m_Muzzles", new Object[] { muzzleLeft.transform, muzzleRight.transform });
+            SetField(cannon, "m_MuzzleLeft", muzzleLeft.transform);
+            SetField(cannon, "m_MuzzleRight", muzzleRight.transform);
 
             SetArrayField(health, "m_VisualsToHideOnDeath", new Object[] { hull, mast, bow });
             SetArrayField(health, "m_CollidersToDisableOnDeath", new Object[] { hitbox });

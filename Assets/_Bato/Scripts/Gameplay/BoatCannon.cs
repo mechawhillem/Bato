@@ -4,22 +4,28 @@ using UnityEngine;
 namespace Bato
 {
     /// <summary>
-    /// Tir. Le client demande, le serveur décide : il revalide le cooldown avec sa propre horloge
-    /// puis spawne le boulet. Un flash purement local part immédiatement côté tireur pour masquer
-    /// le demi aller-retour réseau.
+    /// Tir séparé : O = canon gauche (spawnpointG), P = canon droit (spawnpointD).
+    /// Le client demande, le serveur revalide le cooldown puis spawne le boulet.
     /// </summary>
     public class BoatCannon : NetworkBehaviour
     {
+        const byte k_Left = 0;
+        const byte k_Right = 1;
+
         [SerializeField] GameObject m_CannonballPrefab;
-        [Tooltip("Un boulet part de chaque canon : bordée des deux côtés, comme un vrai bateau.")]
-        [SerializeField] Transform[] m_Muzzles;
+        [Tooltip("Canon bâbord / gauche — touche O (AttackLeft).")]
+        [SerializeField] Transform m_MuzzleLeft;
+        [Tooltip("Canon tribord / droit — touche P (Attack).")]
+        [SerializeField] Transform m_MuzzleRight;
         [SerializeField] float m_Cooldown = 0.8f;
         [SerializeField] float m_MuzzleSpeed = 26f;
 
         BoatNetworkAuthority m_Authority;
         BoatHealth m_Health;
-        float m_LocalNextFireTime;
-        float m_ServerNextFireTime;
+        float m_LocalNextFireLeft;
+        float m_LocalNextFireRight;
+        float m_ServerNextFireLeft;
+        float m_ServerNextFireRight;
 
         void Awake()
         {
@@ -32,25 +38,34 @@ namespace Bato
             if (!IsOwner || m_Authority == null) return;
             if (m_Health != null && !m_Health.IsAlive) return;
 
-            // L'action Attack vient du PlayerInput de Features.Player, pas d'un input à nous.
-            var fire = m_Authority.FireAction;
-            if (fire == null || !fire.IsPressed() || Time.time < m_LocalNextFireTime) return;
-
-            m_LocalNextFireTime = Time.time + m_Cooldown;
-
-            // Le serveur re-dérive les positions depuis son propre état du bateau : le client
-            // n'envoie donc rien qu'il puisse falsifier, juste « je tire ».
-            FireRpc();
+            TryFire(m_Authority.FireLeftAction, k_Left, ref m_LocalNextFireLeft);
+            TryFire(m_Authority.FireRightAction, k_Right, ref m_LocalNextFireRight);
         }
 
+        void TryFire(UnityEngine.InputSystem.InputAction action, byte side, ref float nextLocal)
+        {
+            if (action == null || !action.WasPressedThisFrame()) return;
+            if (Time.time < nextLocal) return;
+
+            nextLocal = Time.time + m_Cooldown;
+            FireRpc(side);
+        }
+ 
         [Rpc(SendTo.Server)]
-        void FireRpc()
+        void FireRpc(byte side)
         {
             if (m_Health != null && !m_Health.IsAlive) return;
 
-            // Revalidation serveur : un client modifié qui spamme ne tire pas plus vite.
-            if (Time.time < m_ServerNextFireTime) return;
-            m_ServerNextFireTime = Time.time + m_Cooldown * 0.9f; // marge pour la gigue réseau
+            if (side == k_Left)
+            {
+                if (Time.time < m_ServerNextFireLeft) return;
+                m_ServerNextFireLeft = Time.time + m_Cooldown * 0.9f;
+            }
+            else
+            {
+                if (Time.time < m_ServerNextFireRight) return;
+                m_ServerNextFireRight = Time.time + m_Cooldown * 0.9f;
+            }
 
             if (m_CannonballPrefab == null)
             {
@@ -58,17 +73,14 @@ namespace Bato
                 return;
             }
 
-            if (m_Muzzles == null || m_Muzzles.Length == 0)
+            var muzzle = side == k_Left ? m_MuzzleLeft : m_MuzzleRight;
+            if (muzzle == null)
             {
-                SpawnBall(transform.position + transform.forward, transform.forward);
+                Debug.LogWarning($"[BoatCannon] Muzzle {(side == k_Left ? "Left" : "Right")} non assigné.");
                 return;
             }
 
-            foreach (var muzzle in m_Muzzles)
-            {
-                if (muzzle == null) continue;
-                SpawnBall(muzzle.position, muzzle.forward);
-            }
+            SpawnBall(muzzle.position, muzzle.forward);
         }
 
         void SpawnBall(Vector3 origin, Vector3 direction)
