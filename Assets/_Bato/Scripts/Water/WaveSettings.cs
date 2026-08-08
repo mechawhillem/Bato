@@ -141,19 +141,29 @@ namespace Bato.Water
         {
             // Couvre aussi le cas d'un asset laissé avec l'ancien spectre : dès que le nombre de
             // vagues ne correspond plus au profil courant, on regénère.
-            if (m_Waves == null || m_Waves.Length != MaxWaves) Regenerate();
+            //
+            // Sans marquer l'asset non plus : OnEnable tourne pendant l'import, et écrire à ce
+            // moment-là relance l'import. Le tirage étant déterministe (même seed = même mer), le
+            // recalculer au chargement ne coûte rien et ne change rien pour les autres joueurs.
+            if (m_Waves == null || m_Waves.Length != MaxWaves) Regenerate(markDirty: false);
         }
 
         // Les réglages ci-dessus ne servent qu'à produire m_Waves : les toucher sans régénérer
         // ne changerait rien à l'écran. On régénère donc à chaque modification de l'inspecteur.
-        void OnValidate() => Regenerate();
+        //
+        // ⚠ SANS marquer l'asset modifié. EditorUtility.SetDirty() appelé depuis OnValidate fait
+        // re-sérialiser l'asset par Unity, ce qui rappelle OnValidate, en boucle : l'éditeur se
+        // fige. L'inspecteur marque déjà l'asset modifié de lui-même.
+        void OnValidate() => Regenerate(markDirty: false);
 
         /// <summary>
         /// Brode autour du profil de référence : mêmes ordres de grandeur, directions et tailles
         /// tirées au sort. Le caractère de la mer ne change pas, seul son motif.
         /// </summary>
         [ContextMenu("Régénérer les vagues")]
-        public void Regenerate()
+        public void Regenerate() => Regenerate(markDirty: true);
+
+        void Regenerate(bool markDirty)
         {
             var random = new System.Random(m_Seed);
             m_Waves = new GerstnerWave[MaxWaves];
@@ -186,7 +196,7 @@ namespace Bato.Water
                 m_Waves[i].Amplitude *= scale;
             }
 
-            MarkDirty();
+            if (markDirty) MarkDirty();
         }
 
         /// <summary>Tire une mer différente.</summary>

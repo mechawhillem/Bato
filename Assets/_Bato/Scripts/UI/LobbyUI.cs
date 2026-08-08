@@ -51,9 +51,21 @@ namespace Bato
             var arena = ArenaBootstrap.Instance;
             if (arena == null || !arena.IsSpawned)
             {
-                if (m_Panel) m_Panel.SetActive(false);
+                // Connecté mais l'objet de scène n'est pas encore synchronisé : on garde le
+                // panneau visible avec un message. Le masquer laissait un écran vide sans rien
+                // indiquer, impossible à distinguer d'un plantage.
+                var manager = NetworkManager.Singleton;
+                bool waiting = manager != null && manager.IsConnectedClient;
+
+                if (m_Panel) m_Panel.SetActive(waiting);
+                if (waiting && m_StatusLabel) m_StatusLabel.text = "Connexion au serveur...";
+                if (waiting && m_ReadyButton) m_ReadyButton.interactable = false;
+
+                m_LastLobbyRevision = -1;   // forcera un vrai Refresh dès que l'arène arrive
                 return;
             }
+
+            if (m_ReadyButton) m_ReadyButton.interactable = true;
 
             bool started = arena.IsMatchStarted;
             if (started != m_WasMatchStarted || arena.LobbyRevision != m_LastLobbyRevision)
