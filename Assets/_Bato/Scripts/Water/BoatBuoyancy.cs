@@ -17,6 +17,9 @@ namespace Bato.Water
     /// Ce composant ne tourne que chez le propriétaire du bateau. Les autres clients voient un
     /// Rigidbody kinematic piloté par le NetworkTransform ; comme la houle est une fonction pure
     /// du temps serveur, leur bateau distant tangue en cohérence sans rien répliquer.
+    ///
+    /// La hauteur de l'eau vient de <see cref="WaterSurface"/>, pas d'une mer en particulier : la
+    /// flottaison marche pareil sur notre houle de Gerstner et sur le volume stylisé de Bitgem.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     public class BoatBuoyancy : MonoBehaviour
@@ -57,10 +60,18 @@ namespace Bato.Water
                  "vrille dès qu'il décolle et retombe sur le flanc.")]
         [SerializeField, Range(0f, 1f)] float m_AirStabilisation = 0.4f;
 
+        [Header("Saut")]
+        [Tooltip("Durée pendant laquelle la traînée verticale de l'eau est suspendue après un " +
+                 "saut. Sans elle, l'amortissement freine l'impulsion tant que la coque n'a pas " +
+                 "quitté la surface et mange près de la moitié de la hauteur du saut.")]
+        [SerializeField, Min(0f)] float m_JumpDampingGrace = 0.3f;
+
         Rigidbody m_Rigidbody;
         Vector3[] m_Probes;
         float m_EquilibriumSubmersion;
         float m_VerticalDampingCoefficient;
+        float m_DampingGraceUntil;
+        bool m_WarnedAboutMissingWater;
 
         /// <summary>Vrai si au moins une sonde touche l'eau.</summary>
         public bool IsInWater { get; private set; }
@@ -76,6 +87,32 @@ namespace Bato.Water
             RecalculateProbes();
             RecalculateResponse();
         }
+
+        void OnEnable() => EnsureRigidbodyIsFree();
+
+        /// <summary>
+        /// Rend au Rigidbody sa gravité et sa liberté de mouvement.
+        ///
+        /// BoatMovementController prépare le bateau pour une mer plate quand il n'y a pas de
+        /// flottaison. Dès qu'il y en a une, c'est ce composant qui décide — et il le réaffirme à
+        /// chaque pas de physique plutôt qu'une fois pour toutes : ça survit à n'importe quel ordre
+        /// d'exécution, à un respawn, et surtout à l'absence de mer. Un bateau sans eau doit
+        /// tomber, pas rester figé en l'air, incapable de sauter.
+        /// </summary>
+        void EnsureRigidbodyIsFree()
+        {
+            if (m_Rigidbody == null || m_Rigidbody.isKinematic) return;
+            if (m_Rigidbody.useGravity && m_Rigidbody.constraints == RigidbodyConstraints.None) return;
+
+            m_Rigidbody.useGravity = true;
+            m_Rigidbody.constraints = RigidbodyConstraints.None;
+        }
+
+        /// <summary>
+        /// Prévient la flottaison qu'un saut vient de partir, pour qu'elle relâche sa traînée
+        /// verticale le temps que la coque sorte de l'eau. Appelé par le pilotage.
+        /// </summary>
+        public void NotifyJump() => m_DampingGraceUntil = Time.time + m_JumpDampingGrace;
 
         void OnValidate()
         {
@@ -145,16 +182,19 @@ namespace Bato.Water
 
         void FixedUpdate()
         {
-            var field = WaveField.Instance;
-            if (field == null || m_Rigidbody.isKinematic || m_Probes == null) return;
+            if (m_Rigidbody.isKinematic || m_Probes == null) return;
 
-            // BoatMovementController coupe la gravité et fige Y pour une mer plate. On réaffirme
-            // ici plutôt que dans OnEnable : ça survit à n'importe quel ordre d'exécution et à une
-            // réactivation du pilotage après un respawn.
-            if (!m_Rigidbody.useGravity || m_Rigidbody.constraints != RigidbodyConstraints.None)
+            // AVANT tout test sur l'eau : c'est ce qui rend le bateau jouable même quand la mer
+            // manque à l'appel. Sortir d'ici sans l'avoir fait le laissait figé en Y et sans
+            // gravité, donc incapable de flotter comme de sauter.
+            EnsureRigidbodyIsFree();
+
+            if (!WaterSurface.Exists)
             {
-                m_Rigidbody.useGravity = true;
-                m_Rigidbody.constraints = RigidbodyConstraints.None;
+                WarnAboutMissingWaterOnce();
+                IsInWater = false;
+                SubmergedRatio = 0f;
+                return;
             }
 
             int probeCount = m_Probes.Length;
@@ -162,18 +202,27 @@ namespace Bato.Water
             float gravity = Mathf.Abs(Physics.gravity.y);
             float submersionSum = 0f;
 
+            // Pendant un saut, l'eau ne doit pas retenir la coque qui monte. Elle continue en
+            // revanche d'amortir la retombée : c'est elle qui évite le rebond au ré-amerrissage.
+            bool jumping = Time.time < m_DampingGraceUntil;
+
             foreach (var offset in m_Probes)
             {
                 var probeWorld = transform.TransformPoint(offset);
-                float depth = field.SampleHeight(probeWorld) - probeWorld.y;
+                if (!WaterSurface.TrySampleHeight(probeWorld, out float waterHeight)) continue;
+
+                float depth = waterHeight - probeWorld.y;
                 if (depth <= 0f) continue;
 
                 float submersion = Mathf.Clamp01(depth / m_ProbeDepth);
                 submersionSum += submersion;
 
                 float buoyancy = submersion * perProbeMass * gravity * m_BuoyancyStrength;
-                float damping = -m_Rigidbody.GetPointVelocity(probeWorld).y
-                                * submersion * perProbeMass * m_VerticalDampingCoefficient;
+
+                float verticalSpeed = m_Rigidbody.GetPointVelocity(probeWorld).y;
+                float damping = jumping && verticalSpeed > 0f
+                    ? 0f
+                    : -verticalSpeed * submersion * perProbeMass * m_VerticalDampingCoefficient;
 
                 m_Rigidbody.AddForceAtPosition(Vector3.up * (buoyancy + damping), probeWorld, ForceMode.Force);
             }
@@ -187,7 +236,17 @@ namespace Bato.Water
             if (stabilisation <= 0f) return;
 
             ApplyAngularDamping(stabilisation);
-            ApplyRighting(field, stabilisation, IsInWater);
+            ApplyRighting(stabilisation, IsInWater);
+        }
+
+        void WarnAboutMissingWaterOnce()
+        {
+            if (m_WarnedAboutMissingWater) return;
+            m_WarnedAboutMissingWater = true;
+
+            Debug.LogWarning(
+                $"[Bato] Aucune surface d'eau dans la scène : '{name}' va couler. Il faut soit " +
+                "l'objet Ocean (WaveField), soit un volume Bitgem portant BitgemWaterSurface.", this);
         }
 
         void ApplyAngularDamping(float immersion)
@@ -203,11 +262,11 @@ namespace Bato.Water
         /// s'annule exactement à 180°. Un bateau retourné s'y retrouvait donc en équilibre, sans
         /// rien pour le redresser — c'est ce qui le laissait la quille en l'air.
         /// </summary>
-        void ApplyRighting(WaveField field, float strength, bool inWater)
+        void ApplyRighting(float strength, bool inWater)
         {
             // Hors de l'eau, s'aligner sur une vague qu'on ne touche pas n'a aucun sens.
             var targetUp = inWater
-                ? Vector3.Slerp(Vector3.up, field.SampleNormal(transform.position), m_WaveAlignment).normalized
+                ? Vector3.Slerp(Vector3.up, WaterSurface.SampleNormal(transform.position), m_WaveAlignment).normalized
                 : Vector3.up;
 
             var cross = Vector3.Cross(transform.up, targetUp);

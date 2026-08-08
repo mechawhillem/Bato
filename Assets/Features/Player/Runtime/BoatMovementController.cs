@@ -52,13 +52,18 @@ namespace Features.Player
                 _buoyancy = GetComponent<BoatBuoyancy>();
             }
 
-            _rigidbody.useGravity = _buoyancy == null;
+            _rigidbody.useGravity = true;
             _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
             _rigidbody.linearDamping = _linearDamping;
             _rigidbody.angularDamping = _angularDamping;
-            _rigidbody.constraints = _buoyancy == null
-                ? RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ
-                : RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+
+            // With buoyancy, the hull owns its own vertical motion and its roll and pitch: it has
+            // to be free on every axis. Freezing Y here used to leave the boat pinned in mid-air —
+            // unable to float or to jump — whenever buoyancy found no water surface to sit on.
+            // Without buoyancy we fall back to a flat sea: upright, gravity does the rest.
+            _rigidbody.constraints = _buoyancy != null
+                ? RigidbodyConstraints.None
+                : RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         }
 
         private void FixedUpdate()
@@ -79,9 +84,9 @@ namespace Features.Player
             ClampPlanarVelocity();
         }
 
-        private void HandleJump(bool isInWater)
+        private void HandleJump(bool canJump)
         {
-            if (isInWater &&
+            if (canJump &&
                 _inputSource.ConsumeJumpPressed() &&
                 Time.time >= _lastJumpTime + _jumpCooldown)
             {
@@ -89,6 +94,13 @@ namespace Features.Player
                 _lastJumpTime = Time.time;
                 _jumpHoldTime = 0f;
                 _jumpInProgress = true;
+
+                // Let the water stop dragging the hull down while it climbs out, otherwise the
+                // buoyancy damping eats most of the impulse before the boat clears the surface.
+                if (_buoyancy != null)
+                {
+                    _buoyancy.NotifyJump();
+                }
             }
 
             if (!_jumpInProgress)

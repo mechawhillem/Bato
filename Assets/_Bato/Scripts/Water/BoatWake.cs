@@ -71,10 +71,15 @@ namespace Bato.Water
             var velocity = (transform.position - m_PreviousPosition) / deltaTime;
             m_PreviousPosition = transform.position;
 
-            var field = WaveField.Instance;
-            if (field == null) return;
+            // Pas d'eau ici : ni sillage ni claque, et on oublie l'état précédent — sinon un
+            // bateau qui repasse au-dessus de la mer déclenche une gerbe qu'il n'a pas méritée.
+            if (!WaterSurface.TrySampleHeight(transform.position, out float waterHeight))
+            {
+                m_WasInWater = false;
+                m_EmissionCarry = 0f;
+                return;
+            }
 
-            float waterHeight = field.SampleHeight(transform.position);
             bool inWater = transform.position.y - m_HullExtents.y <= waterHeight;
 
             DetectSlam(velocity, waterHeight, inWater);
