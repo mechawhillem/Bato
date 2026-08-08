@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -22,9 +23,32 @@ namespace Bato
             ClientId == other.ClientId && Kills == other.Kills && Deaths == other.Deaths;
     }
 
+    /// <summary>Place d'un joueur dans le salon, avant que la partie ne démarre.</summary>
+    public struct LobbyPlayer : INetworkSerializable, IEquatable<LobbyPlayer>
+    {
+        public ulong ClientId;
+        public bool Ready;
+        public int Team;
+
+        public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+        {
+            serializer.SerializeValue(ref ClientId);
+            serializer.SerializeValue(ref Ready);
+            serializer.SerializeValue(ref Team);
+        }
+
+        public bool Equals(LobbyPlayer other) =>
+            ClientId == other.ClientId && Ready == other.Ready && Team == other.Team;
+    }
+
     /// <summary>
-    /// Chef d'orchestre de l'arène, côté serveur : approbation des connexions (qui décide aussi
-    /// du point de spawn), points de réapparition, et tableau des scores répliqué.
+    /// Chef d'orchestre de l'arène, côté serveur : salon d'avant-partie (équipes, prêt, mode de
+    /// jeu), approbation des connexions, points de réapparition et tableau des scores répliqué.
+    ///
+    /// Les bateaux n'apparaissent PAS à la connexion : les joueurs restent dans le salon, et
+    /// c'est <see cref="StartMatchServerRpc"/> qui les fait tous apparaître d'un coup après
+    /// <see cref="m_StartDelay"/>. Une fois la partie lancée, les nouvelles connexions sont
+    /// refusées.
     /// </summary>
     public class ArenaBootstrap : NetworkBehaviour
     {
@@ -32,7 +56,32 @@ namespace Bato
 
         [SerializeField] Transform[] m_SpawnPoints;
 
+        [Tooltip("Coché : chacun reçoit son bateau dès la connexion, sans passer par le salon. " +
+                 "Décoche-le seulement une fois que la scène contient un LobbyUI (Canvas.prefab), " +
+                 "sinon plus rien ne peut lancer la partie.")]
+        [SerializeField] bool m_AutoStart = true;
+
+        [Tooltip("Salon uniquement : délai entre le lancement de la partie et l'apparition des " +
+                 "bateaux, en secondes.")]
+        [SerializeField] float m_StartDelay = 3f;
+
         public readonly NetworkList<PlayerScore> Scores = new NetworkList<PlayerScore>();
+        public readonly NetworkList<LobbyPlayer> Players = new NetworkList<LobbyPlayer>();
+
+        public bool IsMatchStarted => m_MatchStarted.Value;
+        public double StartTime => m_StartTime.Value;
+        public int GameMode => m_GameMode.Value;
+        public bool IsTeamMode => m_GameMode.Value == 1;
+
+        /// <summary>
+        /// Compteur incrémenté à chaque changement du salon. Les UI comparent leur copie à
+        /// celle-ci pour ne se reconstruire que quand quelque chose a réellement bougé.
+        /// </summary>
+        public int LobbyRevision { get; private set; }
+
+        readonly NetworkVariable<bool> m_MatchStarted = new NetworkVariable<bool>(false);
+        readonly NetworkVariable<double> m_StartTime = new NetworkVariable<double>(0d);
+        readonly NetworkVariable<int> m_GameMode = new NetworkVariable<int>(0);
 
         int m_NextSpawnIndex;
 
@@ -65,7 +114,12 @@ namespace Bato
 
         public override void OnNetworkSpawn()
         {
+            m_MatchStarted.OnValueChanged += OnMatchStartedChanged;
+            m_GameMode.OnValueChanged += OnGameModeChanged;
+            Players.OnListChanged += OnPlayersChanged;
+
             if (!IsServer) return;
+
             NetworkManager.OnClientConnectedCallback += OnClientConnected;
             NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
 
@@ -74,11 +128,24 @@ namespace Bato
             {
                 OnClientConnected(clientId);
             }
+
+            // Sans salon, la partie est considérée lancée d'entrée : c'est ce drapeau qui décide
+            // aussi de l'affichage du HUD.
+            if (m_AutoStart)
+            {
+                m_MatchStarted.Value = true;
+                m_StartTime.Value = NetworkManager.ServerTime.Time;
+            }
         }
 
         public override void OnNetworkDespawn()
         {
+            m_MatchStarted.OnValueChanged -= OnMatchStartedChanged;
+            m_GameMode.OnValueChanged -= OnGameModeChanged;
+            Players.OnListChanged -= OnPlayersChanged;
+
             if (NetworkManager == null) return;
+
             NetworkManager.OnClientConnectedCallback -= OnClientConnected;
             NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
         }
@@ -96,26 +163,190 @@ namespace Bato
         void ApproveConnection(NetworkManager.ConnectionApprovalRequest request,
                                NetworkManager.ConnectionApprovalResponse response)
         {
-            var (position, rotation) = GetNextSpawn();
+            // Sans salon : NGO fait apparaître le bateau tout de suite, à la place qu'on lui
+            // indique ici. On n'interdit jamais l'entrée, sinon plus personne ne peut rejoindre.
+            if (m_AutoStart)
+            {
+                var (spawnPosition, spawnRotation) = GetNextSpawn();
 
+                response.Approved = true;
+                response.CreatePlayerObject = true;
+                response.Position = spawnPosition;
+                response.Rotation = spawnRotation;
+                return;
+            }
+
+            if (m_MatchStarted.Value)
+            {
+                response.Approved = false;
+                response.Reason = "La partie a déjà commencé.";
+                return;
+            }
+
+            // Pas de bateau à la connexion : le joueur atterrit dans le salon. C'est
+            // SpawnPlayersAfterDelay qui instancie tout le monde au lancement.
             response.Approved = true;
-            response.CreatePlayerObject = true;
-            response.Position = position;
-            response.Rotation = rotation;
+            response.CreatePlayerObject = false;
         }
 
         void OnClientConnected(ulong clientId)
         {
             if (IndexOf(clientId) < 0)
             {
+                Players.Add(new LobbyPlayer { ClientId = clientId, Ready = false, Team = 1 });
+            }
+
+            if (ScoreIndexOf(clientId) < 0)
+            {
                 Scores.Add(new PlayerScore { ClientId = clientId, Kills = 0, Deaths = 0 });
             }
+
+            LobbyRevision++;
         }
 
         void OnClientDisconnected(ulong clientId)
         {
+            int playerIndex = IndexOf(clientId);
+            if (playerIndex >= 0) Players.RemoveAt(playerIndex);
+
+            int scoreIndex = ScoreIndexOf(clientId);
+            if (scoreIndex >= 0) Scores.RemoveAt(scoreIndex);
+
+            LobbyRevision++;
+        }
+
+        void OnPlayersChanged(NetworkListEvent<LobbyPlayer> _) => LobbyRevision++;
+        void OnMatchStartedChanged(bool _, bool started) => LobbyRevision++;
+        void OnGameModeChanged(int _, int mode) => LobbyRevision++;
+
+        // ----------------------------------------------------------- Salon
+
+        public bool IsReady(ulong clientId)
+        {
             int index = IndexOf(clientId);
-            if (index >= 0) Scores.RemoveAt(index);
+            return index >= 0 && Players[index].Ready;
+        }
+
+        public int GetTeam(ulong clientId)
+        {
+            int index = IndexOf(clientId);
+            return index >= 0 ? Players[index].Team : 1;
+        }
+
+        /// <summary>Hôte uniquement. Changer de mode remet tout le monde « pas prêt ».</summary>
+        [Rpc(SendTo.Server)]
+        public void SetGameModeServerRpc(int mode, RpcParams rpcParams = default)
+        {
+            if (!IsServer || m_MatchStarted.Value) return;
+            if (rpcParams.Receive.SenderClientId != NetworkManager.ServerClientId) return;
+
+            m_GameMode.Value = mode == 1 ? 1 : 0;
+
+            for (int i = 0; i < Players.Count; i++)
+            {
+                var player = Players[i];
+                player.Ready = false;
+
+                if (m_GameMode.Value == 0) player.Team = 0;
+                else if (player.Team < 1 || player.Team > 2) player.Team = i % 2 == 0 ? 1 : 2;
+
+                Players[i] = player;
+            }
+        }
+
+        [Rpc(SendTo.Server)]
+        public void SetTeamServerRpc(int team, RpcParams rpcParams = default)
+        {
+            if (!IsServer || m_MatchStarted.Value || !IsTeamMode) return;
+
+            int index = IndexOf(rpcParams.Receive.SenderClientId);
+            if (index < 0) return;
+
+            var player = Players[index];
+            player.Team = team == 2 ? 2 : 1;
+            player.Ready = false;      // changer d'équipe invalide le « prêt »
+            Players[index] = player;
+        }
+
+        [Rpc(SendTo.Server)]
+        public void SetReadyServerRpc(bool ready, RpcParams rpcParams = default)
+        {
+            if (m_MatchStarted.Value) return;
+
+            int index = IndexOf(rpcParams.Receive.SenderClientId);
+            if (index < 0) return;
+
+            var player = Players[index];
+            player.Ready = ready;
+            Players[index] = player;
+        }
+
+        /// <summary>Hôte uniquement, et seulement si tout le monde est prêt.</summary>
+        [Rpc(SendTo.Server)]
+        public void StartMatchServerRpc(RpcParams rpcParams = default)
+        {
+            if (!IsServer || m_MatchStarted.Value || Players.Count == 0) return;
+            if (rpcParams.Receive.SenderClientId != NetworkManager.ServerClientId) return;
+            if (IsTeamMode && (Players.Count < 2 || !HasPlayersInBothTeams())) return;
+
+            for (int i = 0; i < Players.Count; i++)
+            {
+                if (!Players[i].Ready) return;
+            }
+
+            m_MatchStarted.Value = true;
+            m_StartTime.Value = NetworkManager.ServerTime.Time + m_StartDelay;
+            StartCoroutine(SpawnPlayersAfterDelay());
+        }
+
+        bool HasPlayersInBothTeams()
+        {
+            bool teamOne = false;
+            bool teamTwo = false;
+
+            for (int i = 0; i < Players.Count; i++)
+            {
+                teamOne |= Players[i].Team == 1;
+                teamTwo |= Players[i].Team == 2;
+            }
+
+            return teamOne && teamTwo;
+        }
+
+        IEnumerator SpawnPlayersAfterDelay()
+        {
+            double remaining = m_StartTime.Value - NetworkManager.ServerTime.Time;
+            if (remaining > 0d) yield return new WaitForSeconds((float)remaining);
+            if (!IsServer) yield break;
+
+            m_NextSpawnIndex = 0;
+
+            var prefab = NetworkManager.NetworkConfig.PlayerPrefab;
+            if (prefab == null)
+            {
+                Debug.LogError("[ArenaBootstrap] Aucun PlayerPrefab configuré sur NetworkManager.");
+                yield break;
+            }
+
+            for (int i = 0; i < Players.Count; i++)
+            {
+                ulong clientId = Players[i].ClientId;
+                if (!NetworkManager.ConnectedClients.TryGetValue(clientId, out var client)) continue;
+                if (client.PlayerObject != null) continue;
+
+                var (position, rotation) = GetNextSpawn();
+                var player = Instantiate(prefab, position, rotation);
+
+                var networkObject = player.GetComponent<NetworkObject>();
+                if (networkObject == null)
+                {
+                    Destroy(player);
+                    Debug.LogError("[ArenaBootstrap] Le PlayerPrefab n'a pas de NetworkObject.");
+                    continue;
+                }
+
+                networkObject.SpawnAsPlayerObject(clientId);
+            }
         }
 
         // ---------------------------------------------------------- Spawns
@@ -148,7 +379,7 @@ namespace Bato
 
             if (killerClientId != victimClientId)
             {
-                int killerIndex = IndexOf(killerClientId);
+                int killerIndex = ScoreIndexOf(killerClientId);
                 if (killerIndex >= 0)
                 {
                     var entry = Scores[killerIndex];
@@ -157,7 +388,7 @@ namespace Bato
                 }
             }
 
-            int victimIndex = IndexOf(victimClientId);
+            int victimIndex = ScoreIndexOf(victimClientId);
             if (victimIndex >= 0)
             {
                 var entry = Scores[victimIndex];
@@ -167,6 +398,15 @@ namespace Bato
         }
 
         int IndexOf(ulong clientId)
+        {
+            for (int i = 0; i < Players.Count; i++)
+            {
+                if (Players[i].ClientId == clientId) return i;
+            }
+            return -1;
+        }
+
+        int ScoreIndexOf(ulong clientId)
         {
             for (int i = 0; i < Scores.Count; i++)
             {
