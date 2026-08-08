@@ -1,56 +1,182 @@
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Bato
 {
     /// <summary>
-    /// Tir. Le client demande, le serveur décide : il revalide le cooldown avec sa propre horloge
-    /// puis spawne le boulet. Un flash purement local part immédiatement côté tireur pour masquer
-    /// le demi aller-retour réseau.
+    /// Tir chargé : O = gauche, P = droit.
+    /// Appui court = tir tendu (vitesse min) qui retombe avec la gravité.
+    /// Maintien = charge la puissance (jauge + trajectoire en cloche), relâchement = envoi.
     /// </summary>
     public class BoatCannon : NetworkBehaviour
     {
+        const byte k_Left = 0;
+        const byte k_Right = 1;
+        const float k_MuzzleOffset = 0.6f;
+
         [SerializeField] GameObject m_CannonballPrefab;
-        [Tooltip("Un boulet part de chaque canon : bordée des deux côtés, comme un vrai bateau.")]
-        [SerializeField] Transform[] m_Muzzles;
+        [Tooltip("Canon bâbord / gauche — touche O (AttackLeft).")]
+        [SerializeField] Transform m_MuzzleLeft;
+        [Tooltip("Canon tribord / droit — touche P (Attack).")]
+        [SerializeField] Transform m_MuzzleRight;
         [SerializeField] float m_Cooldown = 0.8f;
-        [SerializeField] float m_MuzzleSpeed = 26f;
+        [SerializeField] float m_MinMuzzleSpeed = 16f;
+        [SerializeField] float m_MaxMuzzleSpeed = 42f;
+        [Tooltip("Angle de tir vers le haut (tap).")]
+        [SerializeField] float m_MinElevation = 32f;
+        [Tooltip("Angle de tir vers le haut (charge max) — grosse cloche.")]
+        [SerializeField] float m_MaxElevation = 55f;
+        [Tooltip("Temps pour atteindre la puissance max en maintenant la touche.")]
+        [SerializeField] float m_ChargeDuration = 1.15f;
 
         BoatNetworkAuthority m_Authority;
         BoatHealth m_Health;
-        float m_LocalNextFireTime;
-        float m_ServerNextFireTime;
+        CannonAimPreview m_AimPreview;
+        float m_LocalNextFireLeft;
+        float m_LocalNextFireRight;
+        float m_ServerNextFireLeft;
+        float m_ServerNextFireRight;
+        float m_ChargeStartLeft = -1f;
+        float m_ChargeStartRight = -1f;
+
+        /// <summary>0 = pas de charge, sinon 0→1 pour la jauge HUD.</summary>
+        public float ChargePower { get; private set; }
 
         void Awake()
         {
             m_Authority = GetComponent<BoatNetworkAuthority>();
             m_Health = GetComponent<BoatHealth>();
+            m_AimPreview = GetComponent<CannonAimPreview>();
+            if (m_AimPreview == null) m_AimPreview = gameObject.AddComponent<CannonAimPreview>();
         }
 
         void Update()
         {
-            if (!IsOwner || m_Authority == null) return;
-            if (m_Health != null && !m_Health.IsAlive) return;
+            ChargePower = 0f;
 
-            // L'action Attack vient du PlayerInput de Features.Player, pas d'un input à nous.
-            var fire = m_Authority.FireAction;
-            if (fire == null || !fire.IsPressed() || Time.time < m_LocalNextFireTime) return;
+            if (!IsOwner || m_Authority == null)
+            {
+                m_AimPreview?.Hide();
+                return;
+            }
 
-            m_LocalNextFireTime = Time.time + m_Cooldown;
+            if (m_Health != null && !m_Health.IsAlive)
+            {
+                CancelCharge(ref m_ChargeStartLeft);
+                CancelCharge(ref m_ChargeStartRight);
+                m_AimPreview?.Hide();
+                return;
+            }
 
-            // Le serveur re-dérive les positions depuis son propre état du bateau : le client
-            // n'envoie donc rien qu'il puisse falsifier, juste « je tire ».
-            FireRpc();
+            UpdateSide(m_Authority.FireLeftAction, k_Left, ref m_ChargeStartLeft, ref m_LocalNextFireLeft);
+            UpdateSide(m_Authority.FireRightAction, k_Right, ref m_ChargeStartRight, ref m_LocalNextFireRight);
+
+            float leftPower = GetChargeProgress(m_ChargeStartLeft);
+            float rightPower = GetChargeProgress(m_ChargeStartRight);
+            ChargePower = Mathf.Max(leftPower, rightPower);
+
+            UpdateAimPreview(leftPower, rightPower);
         }
 
+        void UpdateAimPreview(float leftPower, float rightPower)
+        {
+            if (m_AimPreview == null) return;
+
+            Transform muzzle = null;
+            float power = 0f;
+
+            // Priorité au côté en cours de charge (le plus avancé si les deux).
+            if (rightPower >= leftPower && rightPower > 0f)
+            {
+                muzzle = m_MuzzleRight;
+                power = rightPower;
+            }
+            else if (leftPower > 0f)
+            {
+                muzzle = m_MuzzleLeft;
+                power = leftPower;
+            }
+
+            if (muzzle == null)
+            {
+                m_AimPreview.Hide();
+                return;
+            }
+
+            Vector3 velocity = GetLaunchVelocity(muzzle, power);
+            Vector3 origin = muzzle.position + velocity.normalized * k_MuzzleOffset;
+            m_AimPreview.Show(origin, velocity);
+        }
+
+        /// <summary>
+        /// Direction horizontale du canon + angle vers le haut selon la charge → vraie cloche.
+        /// </summary>
+        Vector3 GetLaunchVelocity(Transform muzzle, float power)
+        {
+            power = Mathf.Clamp01(power);
+
+            Vector3 flat = muzzle != null ? muzzle.forward : transform.forward;
+            flat.y = 0f;
+            if (flat.sqrMagnitude < 0.001f) flat = transform.forward;
+            flat.y = 0f;
+            flat.Normalize();
+
+            float elevationDeg = Mathf.Lerp(m_MinElevation, m_MaxElevation, power);
+            float elevationRad = elevationDeg * Mathf.Deg2Rad;
+            Vector3 direction = (flat * Mathf.Cos(elevationRad) + Vector3.up * Mathf.Sin(elevationRad)).normalized;
+
+            float speed = Mathf.Lerp(m_MinMuzzleSpeed, m_MaxMuzzleSpeed, power);
+            return direction * speed;
+        }
+
+        void UpdateSide(InputAction action, byte side, ref float chargeStart, ref float nextLocal)
+        {
+            if (action == null) return;
+
+            if (action.WasPressedThisFrame() && Time.time >= nextLocal)
+                chargeStart = Time.time;
+
+            if (chargeStart < 0f) return;
+
+            if (action.WasReleasedThisFrame())
+            {
+                float power = GetChargeProgress(chargeStart);
+                chargeStart = -1f;
+                nextLocal = Time.time + m_Cooldown;
+                FireRpc(side, power);
+                return;
+            }
+
+            if (!action.IsPressed())
+                chargeStart = -1f;
+        }
+
+        float GetChargeProgress(float chargeStart)
+        {
+            if (chargeStart < 0f) return 0f;
+            return Mathf.Clamp01((Time.time - chargeStart) / Mathf.Max(0.01f, m_ChargeDuration));
+        }
+
+        static void CancelCharge(ref float chargeStart) => chargeStart = -1f;
+
         [Rpc(SendTo.Server)]
-        void FireRpc()
+        void FireRpc(byte side, float power)
         {
             if (m_Health != null && !m_Health.IsAlive) return;
 
-            // Revalidation serveur : un client modifié qui spamme ne tire pas plus vite.
-            if (Time.time < m_ServerNextFireTime) return;
-            m_ServerNextFireTime = Time.time + m_Cooldown * 0.9f; // marge pour la gigue réseau
+            power = Mathf.Clamp01(power);
+
+            if (side == k_Left)
+            {
+                if (Time.time < m_ServerNextFireLeft) return;
+                m_ServerNextFireLeft = Time.time + m_Cooldown * 0.9f;
+            }
+            else
+            {
+                if (Time.time < m_ServerNextFireRight) return;
+                m_ServerNextFireRight = Time.time + m_Cooldown * 0.9f;
+            }
 
             if (m_CannonballPrefab == null)
             {
@@ -58,26 +184,21 @@ namespace Bato
                 return;
             }
 
-            if (m_Muzzles == null || m_Muzzles.Length == 0)
+            var muzzle = side == k_Left ? m_MuzzleLeft : m_MuzzleRight;
+            if (muzzle == null)
             {
-                SpawnBall(transform.position + transform.forward, transform.forward);
+                Debug.LogWarning($"[BoatCannon] Muzzle {(side == k_Left ? "Left" : "Right")} non assigné.");
                 return;
             }
 
-            foreach (var muzzle in m_Muzzles)
-            {
-                if (muzzle == null) continue;
-                SpawnBall(muzzle.position, muzzle.forward);
-            }
-        }
-
-        void SpawnBall(Vector3 origin, Vector3 direction)
-        {
-            direction = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
-
-            var ball = Instantiate(m_CannonballPrefab, origin + direction * 0.6f, Quaternion.LookRotation(direction));
+            var velocity = GetLaunchVelocity(muzzle, power);
+            var direction = velocity.normalized;
+            var ball = Instantiate(
+                m_CannonballPrefab,
+                muzzle.position + direction * k_MuzzleOffset,
+                Quaternion.LookRotation(direction));
             ball.GetComponent<NetworkObject>().Spawn();
-            ball.GetComponent<Cannonball>().Launch(direction * m_MuzzleSpeed, OwnerClientId);
+            ball.GetComponent<Cannonball>().Launch(velocity, OwnerClientId);
         }
     }
 }

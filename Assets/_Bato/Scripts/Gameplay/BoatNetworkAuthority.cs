@@ -24,8 +24,11 @@ namespace Bato
         BoatMovementController m_Movement;
         BoatBuoyancy m_Buoyancy;
 
-        /// <summary>Action de tir du propriétaire. Null tant que le bateau n'est pas possédé.</summary>
-        public InputAction FireAction { get; private set; }
+        /// <summary>Tir canon droit (P). Null tant que le bateau n'est pas possédé.</summary>
+        public InputAction FireRightAction { get; private set; }
+
+        /// <summary>Tir canon gauche (O). Null tant que le bateau n'est pas possédé.</summary>
+        public InputAction FireLeftAction { get; private set; }
 
         void Awake()
         {
@@ -56,7 +59,8 @@ namespace Bato
 
             if (owned && m_PlayerInput != null && m_PlayerInput.actions != null)
             {
-                FireAction = m_PlayerInput.actions.FindAction("Attack", throwIfNotFound: false);
+                FireRightAction = m_PlayerInput.actions.FindAction("Attack", throwIfNotFound: false);
+                FireLeftAction = m_PlayerInput.actions.FindAction("AttackLeft", throwIfNotFound: false);
             }
         }
 

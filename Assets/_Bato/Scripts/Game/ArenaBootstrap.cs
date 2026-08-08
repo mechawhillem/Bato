@@ -57,10 +57,23 @@ namespace Bato
         readonly NetworkVariable<int> m_GameMode = new NetworkVariable<int>(0);
         int m_NextSpawnIndex;
 
-        void Awake() => Instance = this;
+
+        void Awake()
+        {
+            Instance = this;
+
+            // Callback d'approbation AVANT tout StartHost (plus sûr que Start).
+            var nm = NetworkManager.Singleton;
+            if (nm != null)
+            {
+                nm.NetworkConfig.ConnectionApproval = true;
+                nm.ConnectionApprovalCallback = ApproveConnection;
+            }
+        }
 
         void Start()
         {
+            // Filet si le NetworkManager n'était pas encore prêt dans Awake.
             var nm = NetworkManager.Singleton;
             if (nm == null)
             {

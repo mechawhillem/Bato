@@ -44,6 +44,7 @@ namespace Bato.Water
         static readonly int s_WaveCountId = Shader.PropertyToID("_BatoWaveCount");
         static readonly int s_WaveTimeId = Shader.PropertyToID("_BatoWaveTime");
         static readonly int s_SeaStateId = Shader.PropertyToID("_BatoSeaState");
+        static readonly int s_WaveHeightId = Shader.PropertyToID("_BatoWaveHeight");
 
         readonly Vector4[] m_DirAmpBuffer = new Vector4[WaveSettings.MaxWaves];
         readonly Vector4[] m_ShapeBuffer = new Vector4[WaveSettings.MaxWaves];
@@ -147,12 +148,26 @@ namespace Bato.Water
 
             Shader.SetGlobalVectorArray(s_WaveDirAmpId, m_DirAmpBuffer);
             Shader.SetGlobalVectorArray(s_WaveShapeId, m_ShapeBuffer);
+            float amplitudeScale = m_SeaStateLocal * m_Settings.GlobalAmplitude;
+
             Shader.SetGlobalInt(s_WaveCountId, count);
             Shader.SetGlobalFloat(s_WaveTimeId, WaveTime);
-            Shader.SetGlobalFloat(s_SeaStateId, m_SeaStateLocal * m_Settings.GlobalAmplitude);
+            Shader.SetGlobalFloat(s_SeaStateId, amplitudeScale);
+
+            // Hauteur totale de la mer. Le shader s'en sert pour deux choses : normaliser ses
+            // dégradés, et retrouver le même q que le CPU. C'est donc une valeur du miroir, pas
+            // un simple réglage de rendu.
+            Shader.SetGlobalFloat(s_WaveHeightId, TotalAmplitudeScaled(amplitudeScale));
         }
 
         // ------------------------------------------------------- Échantillonnage
+
+        /// <summary>
+        /// Somme des amplitudes une fois l'état de mer appliqué. Le plancher évite une division
+        /// par zéro dans le calcul de q quand la mer est complètement calmée.
+        /// </summary>
+        float TotalAmplitudeScaled(float amplitudeScale)
+            => Mathf.Max(0.01f, m_Settings.TotalAmplitude * amplitudeScale);
 
         /// <summary>
         /// Déplacement de Gerstner appliqué au point de grille <paramref name="gridPosition"/>.
@@ -171,6 +186,7 @@ namespace Bato.Water
             if (count == 0) return result;
 
             float amplitudeScale = m_SeaStateLocal * m_Settings.GlobalAmplitude;
+            float totalAmplitude = TotalAmplitudeScaled(amplitudeScale);
             var waves = m_Settings.Waves;
 
             for (int i = 0; i < count; i++)
@@ -185,8 +201,11 @@ namespace Bato.Water
                 float speed = Mathf.Sqrt(WaveSettings.Gravity / k) * wave.SpeedMultiplier;
                 float phase = k * (Vector2.Dot(direction, gridPosition) - speed * time);
 
-                // Steepness normalisée pour que la crête ne se replie jamais sur elle-même.
-                float q = wave.Steepness / (k * amplitude * count);
+                // Budget de pincement réparti au prorata de l'amplitude, pas du nombre de vagues.
+                // La condition de non-repli est sum(q·k·A) <= 1 : en divisant par l'amplitude
+                // TOTALE, chaque vague prend exactement sa part et la houle dominante garde une
+                // vraie crête pointue même quand on ajoute du clapot derrière elle.
+                float q = wave.Steepness / (k * totalAmplitude);
 
                 float cos = Mathf.Cos(phase);
                 float sin = Mathf.Sin(phase);
@@ -244,6 +263,7 @@ namespace Bato.Water
             var gridPosition = SolveGridPosition(new Vector2(worldPosition.x, worldPosition.z), time);
 
             float amplitudeScale = m_SeaStateLocal * m_Settings.GlobalAmplitude;
+            float totalAmplitude = TotalAmplitudeScaled(amplitudeScale);
             var waves = m_Settings.Waves;
 
             float nx = 0f, ny = 0f, nz = 0f;
@@ -259,7 +279,7 @@ namespace Bato.Water
                 float k = 2f * Mathf.PI / wave.Wavelength;
                 float speed = Mathf.Sqrt(WaveSettings.Gravity / k) * wave.SpeedMultiplier;
                 float phase = k * (Vector2.Dot(direction, gridPosition) - speed * time);
-                float q = wave.Steepness / (k * amplitude * count);
+                float q = wave.Steepness / (k * totalAmplitude);
 
                 float wa = k * amplitude;
                 nx -= direction.x * wa * Mathf.Cos(phase);

@@ -22,6 +22,7 @@ namespace Bato.EditorTools
         static readonly int s_WaveCountId = Shader.PropertyToID("_BatoWaveCount");
         static readonly int s_WaveTimeId = Shader.PropertyToID("_BatoWaveTime");
         static readonly int s_SeaStateId = Shader.PropertyToID("_BatoSeaState");
+        static readonly int s_WaveHeightId = Shader.PropertyToID("_BatoWaveHeight");
 
         static readonly Vector4[] s_DirAmpBuffer = new Vector4[WaveSettings.MaxWaves];
         static readonly Vector4[] s_ShapeBuffer = new Vector4[WaveSettings.MaxWaves];
@@ -84,6 +85,8 @@ namespace Bato.EditorTools
             Shader.SetGlobalInt(s_WaveCountId, count);
             Shader.SetGlobalFloat(s_WaveTimeId, (float)EditorApplication.timeSinceStartup);
             Shader.SetGlobalFloat(s_SeaStateId, s_Settings.GlobalAmplitude);
+            Shader.SetGlobalFloat(s_WaveHeightId,
+                Mathf.Max(0.01f, s_Settings.TotalAmplitude * s_Settings.GlobalAmplitude));
 
             SceneView.RepaintAll();
         }
