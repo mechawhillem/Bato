@@ -15,7 +15,6 @@ GameObject:
   - component: {fileID: 8657566327715858712}
   - component: {fileID: 5427003248151062670}
   - component: {fileID: 3947948632119220821}
-  - component: {fileID: 8024981287405013899}
   m_Layer: 0
   m_Name: Player Camera
   m_TagString: MainCamera
@@ -166,8 +165,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_ActionEvents: []
-  m_NeverAutoSwitchControlSchemes: 1
-  m_DefaultControlScheme: Gamepad
+  m_NeverAutoSwitchControlSchemes: 0
+  m_DefaultControlScheme: 
   m_DefaultActionMap: Player
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
@@ -213,19 +212,3 @@ MonoBehaviour:
   _flankSideOffset: 5
   _flankForwardOffset: 1.5
   _flankHeight: 3.5
---- !u!114 &8024981287405013899
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 103753365499684892}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e454e3b60cd093945950bcabac13ca42, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Features.Input.InputDeviceModeToggle
-  _useGamepad: 1
-  _playerInputs:
-  - {fileID: 8657566327715858712}
-  - {fileID: 0}

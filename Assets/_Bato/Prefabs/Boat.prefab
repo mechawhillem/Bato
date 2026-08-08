@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 2800560516479960634}
   - component: {fileID: 2715936143152988639}
   - component: {fileID: 2262829610030452298}
+  - component: {fileID: 1756982201260541780}
   - component: {fileID: 4001256749224011590}
   - component: {fileID: 1549629503717618645}
   - component: {fileID: 1368139683260005106}
@@ -39,7 +40,9 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 3964571353966962852}
+  - {fileID: 8740705499837937348}
+  - {fileID: 1138336543782419109}
+  - {fileID: 2650417887745915421}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &5870961874725682492
@@ -217,13 +220,43 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Features.Player.BoatMovementController
   _inputSource: {fileID: 2715936143152988639}
-  _forwardAcceleration: 20
-  _reverseAcceleration: 6
-  _maxForwardSpeed: 15
-  _maxReverseSpeed: 3
+  _buoyancy: {fileID: 0}
+  _forwardAcceleration: 30
+  _reverseAcceleration: 20
+  _maxForwardSpeed: 30
+  _maxReverseSpeed: 20
   _linearDamping: 1.5
   _steeringTorque: 8
   _angularDamping: 3
+  _jumpImpulse: 8
+  _jumpHoldAcceleration: 15
+  _maxJumpHoldTime: 0.35
+  _jumpReleaseMultiplier: 0.35
+  _airControl: 0.35
+  _jumpCooldown: 0.4
+--- !u!114 &1756982201260541780
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3825198234923154726}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39dec39cf87da21458b9d87ebd020b95, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Bato.Water.BoatBuoyancy
+  m_ProbeOffsets:
+  - {x: -5, y: -0.3, z: 1.7600001}
+  - {x: 5, y: -0.3, z: 1.7600001}
+  - {x: -5, y: -0.3, z: -1.7600001}
+  - {x: 5, y: -0.3, z: -1.7600001}
+  m_ProbeDepth: 0.48000002
+  m_BuoyancyStrength: 1.6
+  m_VerticalDrag: 2.2
+  m_AngularDrag: 1.4
+  m_UprightTorque: 3.5
+  m_WaveAlignment: 0.35
 --- !u!114 &4001256749224011590
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -272,6 +305,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Bato.BoatCannon
   ShowTopMostFoldoutHeaderGroup: 1
   m_CannonballPrefab: {fileID: 5878007302481284183, guid: d592856f8a096934aa8993c250a3dbd3, type: 3}
+<<<<<<< HEAD
   m_MuzzleLeft: {fileID: 0}
   m_MuzzleRight: {fileID: 0}
   m_Cooldown: 0.8
@@ -281,6 +315,76 @@ MonoBehaviour:
   m_MaxElevation: 55
   m_ChargeDuration: 1.15
 --- !u!1001 &3498810760323043151
+=======
+  m_Muzzles:
+  - {fileID: 8740705499837937348}
+  - {fileID: 1138336543782419109}
+  m_Cooldown: 0.8
+  m_MuzzleSpeed: 26
+--- !u!1 &6167578840091273763
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1138336543782419109}
+  m_Layer: 0
+  m_Name: MuzzleRight
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1138336543782419109
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6167578840091273763}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 1, y: 0.55, z: 0.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1660501911274231193}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &9161967504863539908
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8740705499837937348}
+  m_Layer: 0
+  m_Name: MuzzleLeft
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8740705499837937348
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9161967504863539908}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: -1, y: 0.55, z: 0.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1660501911274231193}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &2540756399010536950
+>>>>>>> c8cbe086749a0957872a2324c82d220b755ab7c8
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -345,8 +449,8 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d9386fb749d30c6439c219ea2c8f5978, type: 3}
---- !u!4 &3964571353966962852 stripped
+--- !u!4 &2650417887745915421 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: d9386fb749d30c6439c219ea2c8f5978, type: 3}
-  m_PrefabInstance: {fileID: 3498810760323043151}
+  m_PrefabInstance: {fileID: 2540756399010536950}
   m_PrefabAsset: {fileID: 0}

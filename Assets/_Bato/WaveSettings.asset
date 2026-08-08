@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4429313c96256d44bd333cd3dbb3557, type: 3}
+  m_Name: WaveSettings
+  m_EditorClassIdentifier: Assembly-CSharp::Bato.Water.WaveSettings
+  m_Waves:
+  - Direction: {x: 1, y: 0.15}
+    Wavelength: 34
+    Amplitude: 0.75
+    Steepness: 0.55
+    SpeedMultiplier: 1
+  - Direction: {x: 0.6, y: 0.8}
+    Wavelength: 19
+    Amplitude: 0.42
+    Steepness: 0.7
+    SpeedMultiplier: 1
+  - Direction: {x: -0.4, y: 0.9}
+    Wavelength: 11
+    Amplitude: 0.22
+    Steepness: 0.8
+    SpeedMultiplier: 1.1
+  - Direction: {x: -0.9, y: 0.3}
+    Wavelength: 6
+    Amplitude: 0.09
+    Steepness: 0.9
+    SpeedMultiplier: 1.2
+  m_GlobalAmplitude: 1

@@ -499,7 +499,7 @@
                 },
                 {
                     "name": "1DAxis",
-                    "id": "f63a7533-bbdf-4d4d-a506-2f63a7296236",
+                    "id": "abf7ba9e-f5a9-4f5b-b420-97e9cedd6a63",
                     "path": "1DAxis",
                     "interactions": "",
                     "processors": "",
@@ -510,8 +510,8 @@
                 },
                 {
                     "name": "Positive",
-                    "id": "eadaca29-b809-4c4e-a997-9e23cdca10b7",
-                    "path": "<Keyboard>/z",
+                    "id": "1b15a2da-ea0d-4c2c-9d92-8aca38663ff4",
+                    "path": "<Keyboard>/w",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
@@ -521,7 +521,7 @@
                 },
                 {
                     "name": "Positive",
-                    "id": "18ac37bd-bc95-444c-b77d-afc5af39c932",
+                    "id": "9e1106b3-668b-4459-b30e-198e8119bdbd",
                     "path": "<Keyboard>/upArrow",
                     "interactions": "",
                     "processors": "",
@@ -532,7 +532,7 @@
                 },
                 {
                     "name": "Negative",
-                    "id": "f8552d23-6806-4584-92ec-c5ccd59d6d12",
+                    "id": "52d4c14f-3201-4ee6-ad0e-3de6aff2e1d4",
                     "path": "<Keyboard>/s",
                     "interactions": "",
                     "processors": "",
@@ -543,7 +543,7 @@
                 },
                 {
                     "name": "Negative",
-                    "id": "8ca987c1-85f2-480d-96be-664df2beaca0",
+                    "id": "765602a8-d4f2-4f59-b545-7ba892ec83f3",
                     "path": "<Keyboard>/downArrow",
                     "interactions": "",
                     "processors": "",
@@ -554,7 +554,7 @@
                 },
                 {
                     "name": "1DAxis",
-                    "id": "0674a66c-17d9-4532-ad2f-dff55af48235",
+                    "id": "7e5e20b5-cb5f-4ad5-ab1f-6b6f5659d46b",
                     "path": "1DAxis",
                     "interactions": "",
                     "processors": "",
@@ -565,7 +565,7 @@
                 },
                 {
                     "name": "Positive",
-                    "id": "feb53c7a-50e2-4a1f-b82e-949ab842beb7",
+                    "id": "93c9c749-7e2a-4b6e-9e52-326d055b1805",
                     "path": "<Gamepad>/rightTrigger",
                     "interactions": "",
                     "processors": "",
@@ -576,7 +576,7 @@
                 },
                 {
                     "name": "Negative",
-                    "id": "35c272a5-fe45-4be8-9c10-9b2dea39f2aa",
+                    "id": "71149f44-6c8d-4cba-91c0-2563d5a671c8",
                     "path": "<Gamepad>/leftTrigger",
                     "interactions": "",
                     "processors": "",
@@ -587,7 +587,7 @@
                 },
                 {
                     "name": "",
-                    "id": "b9c5d4a7-4bd7-4c88-97f9-ab6523604e56",
+                    "id": "4f77ecc0-3a58-4697-8de2-96060c1521c1",
                     "path": "<Gamepad>/leftStick/x",
                     "interactions": "",
                     "processors": "",
@@ -598,7 +598,7 @@
                 },
                 {
                     "name": "1DAxis",
-                    "id": "701d2b58-24ab-48cf-923a-756333474190",
+                    "id": "b2f5c077-f77b-4c30-8aaa-6f8750d2aee6",
                     "path": "1DAxis",
                     "interactions": "",
                     "processors": "",
@@ -609,7 +609,7 @@
                 },
                 {
                     "name": "Positive",
-                    "id": "8924cd14-8fac-4cb5-9a26-87f2af69b3f5",
+                    "id": "ca63409d-b384-4492-b331-7055314dd374",
                     "path": "<Keyboard>/d",
                     "interactions": "",
                     "processors": "",
@@ -620,7 +620,7 @@
                 },
                 {
                     "name": "Positive",
-                    "id": "0cbbe7da-d961-4259-b9a0-0c2a437679d6",
+                    "id": "342818ad-197d-4e23-986e-b2b04be5c00f",
                     "path": "<Keyboard>/rightArrow",
                     "interactions": "",
                     "processors": "",
@@ -631,8 +631,8 @@
                 },
                 {
                     "name": "Negative",
-                    "id": "2e4b6c7c-9575-4131-979e-34302d81e683",
-                    "path": "<Keyboard>/q",
+                    "id": "5bc54bf8-61da-40d9-aaf5-7c876b8b50db",
+                    "path": "<Keyboard>/a",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
@@ -642,7 +642,7 @@
                 },
                 {
                     "name": "Negative",
-                    "id": "54569311-b44a-4cf9-a6fb-a41f4b56a50d",
+                    "id": "d8cde505-8a8f-4dd8-9459-252b92b2b082",
                     "path": "<Keyboard>/leftArrow",
                     "interactions": "",
                     "processors": "",
@@ -653,8 +653,8 @@
                 },
                 {
                     "name": "",
-                    "id": "d97c3726-26d1-458a-8ad6-36be09985c30",
-                    "path": "<Keyboard>/f",
+                    "id": "5731bbd3-79d4-4913-b7e5-ce72b6c0f7ec",
+                    "path": "<Keyboard>/q",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
@@ -664,7 +664,7 @@
                 },
                 {
                     "name": "",
-                    "id": "c0638407-7be2-40d3-91e9-563894951d8e",
+                    "id": "c428dcae-948f-4433-93f9-6bfe3251952d",
                     "path": "<Gamepad>/leftShoulder",
                     "interactions": "",
                     "processors": "",
@@ -675,8 +675,8 @@
                 },
                 {
                     "name": "",
-                    "id": "cd254150-1f8d-4c9d-91c8-ca8f4da1d527",
-                    "path": "<Keyboard>/g",
+                    "id": "64929aa7-d118-4274-a4e1-44ff69fb5ddd",
+                    "path": "<Keyboard>/e",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
@@ -686,7 +686,7 @@
                 },
                 {
                     "name": "",
-                    "id": "3e5597ad-58fc-4dd1-8cae-8b7f92f0e40f",
+                    "id": "23828f6f-fbd6-4dc4-be85-bb2a23901b26",
                     "path": "<Gamepad>/rightShoulder",
                     "interactions": "",
                     "processors": "",
