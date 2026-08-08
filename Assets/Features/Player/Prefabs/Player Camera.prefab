@@ -209,6 +209,7 @@ MonoBehaviour:
   _maximumPitch: 55
   _offsetRecenterSpeed: 4
   _flankBlendDuration: 0.18
-  _flankSideOffset: 5
-  _flankForwardOffset: 1.5
-  _flankHeight: 3.5
+  _flankSideOffset: 9
+  _flankForwardOffset: 0
+  _flankHeight: 4.5
+  _flankLookHeight: 1.5
