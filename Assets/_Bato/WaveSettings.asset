@@ -17,7 +17,7 @@ MonoBehaviour:
     Wavelength: 34
     Amplitude: 0.75
     Steepness: 0.55
-    SpeedMultiplier: 5
+    SpeedMultiplier: 1
   - Direction: {x: 0.6, y: 0.8}
     Wavelength: 19
     Amplitude: 0.42
