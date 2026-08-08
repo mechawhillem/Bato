@@ -28,7 +28,8 @@ namespace Bato
         void Update()
         {
             var nm = NetworkManager.Singleton;
-            bool inGame = nm != null && nm.IsListening;
+            var arena = ArenaBootstrap.Instance;
+            bool inGame = nm != null && nm.IsListening && arena != null && arena.IsMatchStarted;
 
             if (m_Root && m_Root.activeSelf != inGame) m_Root.SetActive(inGame);
             if (!inGame) return;
