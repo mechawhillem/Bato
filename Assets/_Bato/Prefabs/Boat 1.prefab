@@ -71,7 +71,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1660501911274231193}
-  - component: {fileID: 5870961874725682492}
   - component: {fileID: 7343461524725862688}
   - component: {fileID: 7794389421156823045}
   - component: {fileID: 9035002058919692701}
@@ -83,6 +82,7 @@ GameObject:
   - component: {fileID: 1368139683260005106}
   - component: {fileID: 2675132634545105627}
   - component: {fileID: 4246043165514568755}
+  - component: {fileID: 1335377777335137756}
   m_Layer: 0
   m_Name: Boat 1
   m_TagString: Untagged
@@ -108,27 +108,6 @@ Transform:
   - {fileID: 950322828647771874}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &5870961874725682492
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3825198234923154726}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 3.8059845, y: 9.312031, z: 12.060339}
-  m_Center: {x: 0.8229904, y: 4.306015, z: -0.36612988}
 --- !u!54 &7343461524725862688
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -330,7 +309,7 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   m_CollidersToDisableOnDeath:
-  - {fileID: 5870961874725682492}
+  - {fileID: 0}
 --- !u!114 &1368139683260005106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -365,7 +344,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39dec39cf87da21458b9d87ebd020b95, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bato.Water.BoatBuoyancy
-  m_HullCollider: {fileID: 5870961874725682492}
+  m_HullCollider: {fileID: 0}
   m_ProbeInset: 0.85
   m_ProbeDepth: 1.5
   m_BuoyancyStrength: 5
@@ -374,6 +353,7 @@ MonoBehaviour:
   m_AngularDrag: 2.5
   m_UprightTorque: 6
   m_WaveAlignment: 0.35
+  m_AirStabilisation: 0.4
 --- !u!114 &4246043165514568755
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -386,13 +366,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c59c52ddee9a0b47823e36e105722cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bato.Water.BoatWake
-  m_HullCollider: {fileID: 5870961874725682492}
+  m_HullCollider: {fileID: 0}
   m_MinSpeed: 1.2
   m_FullSpeed: 7
   m_MaxEmissionRate: 70
   m_SpreadSpeed: 1.3
   m_SlamSpeed: 3.5
   m_SlamCooldown: 0.35
+--- !u!65 &1335377777335137756
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3825198234923154726}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 4.605996, y: 9.862331, z: 13.093759}
+  m_Center: {x: 0, y: 4.9396324, z: 0}
 --- !u!1001 &773072048451995913
 PrefabInstance:
   m_ObjectHideFlags: 0

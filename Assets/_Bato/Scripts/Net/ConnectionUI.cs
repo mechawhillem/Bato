@@ -1,3 +1,4 @@
+using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,7 +21,7 @@ namespace Bato
 
         [Tooltip("Facultatif. Non renseigné, le joueur garde son pseudo précédent ou en reçoit un " +
                  "au hasard : le multijoueur reste utilisable sans ce champ.")]
-        [SerializeField] InputField m_NameField;
+        [SerializeField] TMP_InputField m_NameField;
 
         SessionRunner Runner => SessionRunner.Instance;
 
