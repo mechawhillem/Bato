@@ -6,8 +6,7 @@ namespace Bato
 {
     /// <summary>
     /// Tir chargé : O = gauche, P = droit.
-    /// Appui court = tir tendu (vitesse min) qui retombe avec la gravité.
-    /// Maintien = charge la puissance (jauge + trajectoire en cloche), relâchement = envoi.
+    /// Appui court = tir presque droit. Maintien = petite courbe qui grossit progressivement.
     /// </summary>
     public class BoatCannon : NetworkBehaviour
     {
@@ -21,14 +20,18 @@ namespace Bato
         [Tooltip("Canon tribord / droit — touche P (Attack).")]
         [SerializeField] Transform m_MuzzleRight;
         [SerializeField] float m_Cooldown = 0.8f;
-        [SerializeField] float m_MinMuzzleSpeed = 16f;
-        [SerializeField] float m_MaxMuzzleSpeed = 42f;
-        [Tooltip("Angle de tir vers le haut (tap).")]
-        [SerializeField] float m_MinElevation = 32f;
-        [Tooltip("Angle de tir vers le haut (charge max) — grosse cloche.")]
-        [SerializeField] float m_MaxElevation = 55f;
+        [Tooltip("Vitesse du tir tap (presque droit).")]
+        [SerializeField] float m_MinMuzzleSpeed = 24f;
+        [Tooltip("Vitesse à charge max.")]
+        [SerializeField] float m_MaxMuzzleSpeed = 38f;
+        [Tooltip("Angle vers le haut au tap — quasi droit (petite courbe).")]
+        [SerializeField] float m_MinElevation = 3f;
+        [Tooltip("Angle vers le haut à charge max.")]
+        [SerializeField] float m_MaxElevation = 38f;
         [Tooltip("Temps pour atteindre la puissance max en maintenant la touche.")]
-        [SerializeField] float m_ChargeDuration = 1.15f;
+        [SerializeField] float m_ChargeDuration = 2.5f;
+        [Tooltip(">1 = la courbe grossit lentement au début, plus vite ensuite.")]
+        [SerializeField] float m_ArcEase = 1.75f;
 
         BoatNetworkAuthority m_Authority;
         BoatHealth m_Health;
@@ -110,7 +113,7 @@ namespace Bato
         }
 
         /// <summary>
-        /// Direction horizontale du canon + angle vers le haut selon la charge → vraie cloche.
+        /// Tap (power 0) ≈ tir droit. Plus on charge, plus l'angle monte — lentement au début.
         /// </summary>
         Vector3 GetLaunchVelocity(Transform muzzle, float power)
         {
@@ -122,7 +125,9 @@ namespace Bato
             flat.y = 0f;
             flat.Normalize();
 
-            float elevationDeg = Mathf.Lerp(m_MinElevation, m_MaxElevation, power);
+            // Ease-in : au début la courbe reste toute petite, puis elle grandit.
+            float arc = Mathf.Pow(power, Mathf.Max(1f, m_ArcEase));
+            float elevationDeg = Mathf.Lerp(m_MinElevation, m_MaxElevation, arc);
             float elevationRad = elevationDeg * Mathf.Deg2Rad;
             Vector3 direction = (flat * Mathf.Cos(elevationRad) + Vector3.up * Mathf.Sin(elevationRad)).normalized;
 

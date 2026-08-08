@@ -32,9 +32,12 @@ namespace Features.Camera
 
         [Header("Flank Views")]
         [SerializeField, Min(0.01f)] private float _flankBlendDuration = 0.18f;
-        [SerializeField, Min(0f)] private float _flankSideOffset = 5f;
-        [SerializeField, Min(0f)] private float _flankForwardOffset = 1.5f;
-        [SerializeField, Min(0f)] private float _flankHeight = 3.5f;
+        [SerializeField, Min(0f)] private float _flankSideOffset = 9f;
+        [Tooltip("Décalage avant/arrière (0 = profil strict, face au flanc).")]
+        [SerializeField] private float _flankForwardOffset = 0f;
+        [SerializeField, Min(0f)] private float _flankHeight = 4.5f;
+        [Tooltip("Point regardé sur le bateau (hauteur).")]
+        [SerializeField, Min(0f)] private float _flankLookHeight = 1.5f;
 
         private readonly BoatCameraStateMachine _stateMachine = new();
         private Vector3 _lastValidVelocityDirection = Vector3.forward;
@@ -155,26 +158,41 @@ namespace Features.Camera
             }
 
             Vector3 heading = _lastValidVelocityDirection;
-            Vector3 lookDirection = _target.forward;
+            Vector3 lookTarget;
             Vector3 positionOffset;
+            bool isFlank = _stateMachine.State != BoatCameraState.Normal;
 
-            if (_stateMachine.State == BoatCameraState.Normal)
+            if (!isFlank)
             {
                 Quaternion headingRotation = Quaternion.LookRotation(heading, Vector3.up);
                 Quaternion stickOffset = Quaternion.Euler(_pitchOffset, _yawOffset, 0f);
                 positionOffset = headingRotation * (stickOffset * (Vector3.back * _distance + Vector3.up * _height));
+                lookTarget = _target.position + _target.forward * _lookAhead + Vector3.up * _lookHeight;
             }
             else
             {
+                // Profil : caméra sur le flanc, regard vers le centre du bateau (pas vers la proue).
                 float sideSign = _stateMachine.State == BoatCameraState.FlankLeft ? -1f : 1f;
-                Vector3 side = _target.right * sideSign;
-                positionOffset = side * _flankSideOffset - _target.forward * _flankForwardOffset + Vector3.up * _flankHeight;
+                Vector3 side = Vector3.ProjectOnPlane(_target.right, Vector3.up);
+                if (side.sqrMagnitude < 0.0001f) side = _target.right;
+                side.Normalize();
+
+                Vector3 forward = Vector3.ProjectOnPlane(_target.forward, Vector3.up);
+                if (forward.sqrMagnitude < 0.0001f) forward = _target.forward;
+                forward.Normalize();
+
+                positionOffset = side * (sideSign * _flankSideOffset)
+                                 + forward * _flankForwardOffset
+                                 + Vector3.up * _flankHeight;
+
+                lookTarget = _target.position + Vector3.up * _flankLookHeight;
             }
 
             desiredPosition = _target.position + positionOffset;
-            Vector3 lookTarget = _target.position + lookDirection * _lookAhead + Vector3.up * _lookHeight;
             Vector3 toLookTarget = lookTarget - desiredPosition;
-            desiredRotation = toLookTarget.sqrMagnitude > 0.0001f ? Quaternion.LookRotation(toLookTarget.normalized, Vector3.up) : transform.rotation;
+            desiredRotation = toLookTarget.sqrMagnitude > 0.0001f
+                ? Quaternion.LookRotation(toLookTarget.normalized, Vector3.up)
+                : transform.rotation;
         }
 
         private void OnFlankLeftStarted() => _stateMachine.BeginLeft(Time.unscaledTime);
