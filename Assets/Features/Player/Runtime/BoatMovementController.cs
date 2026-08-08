@@ -1,9 +1,10 @@
+using Bato.Water;
 using UnityEngine;
 
 namespace Features.Player
 {
     /// <summary>
-    /// Applies boat-like acceleration and steering to a Rigidbody.
+    /// Applies boat-like acceleration, steering, air control, and variable jumping to a Rigidbody.
     /// Input is supplied by a separate PlayerInputSource so this component remains network-agnostic.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
@@ -11,6 +12,7 @@ namespace Features.Player
     {
         [Header("References")]
         [SerializeField] private PlayerInputSource _inputSource;
+        [SerializeField] private BoatBuoyancy _buoyancy;
 
         [Header("Movement")]
         [SerializeField, Min(0f)] private float _forwardAcceleration = 12f;
@@ -23,7 +25,18 @@ namespace Features.Player
         [SerializeField, Min(0f)] private float _steeringTorque = 8f;
         [SerializeField, Min(0f)] private float _angularDamping = 3f;
 
+        [Header("Jump")]
+        [SerializeField, Min(0f)] private float _jumpImpulse = 8f;
+        [SerializeField, Min(0f)] private float _jumpHoldAcceleration = 30f;
+        [SerializeField, Min(0f)] private float _maxJumpHoldTime = 0.35f;
+        [SerializeField, Range(0f, 1f)] private float _jumpReleaseMultiplier = 0.35f;
+        [SerializeField, Min(0f)] private float _airControl = 0.35f;
+        [SerializeField, Min(0f)] private float _jumpCooldown = 0.4f;
+
         private Rigidbody _rigidbody;
+        private float _lastJumpTime = -Mathf.Infinity;
+        private float _jumpHoldTime;
+        private bool _jumpInProgress;
 
         private void Awake()
         {
@@ -34,11 +47,18 @@ namespace Features.Player
                 _inputSource = GetComponent<PlayerInputSource>();
             }
 
-            _rigidbody.useGravity = false;
+            if (_buoyancy == null)
+            {
+                _buoyancy = GetComponent<BoatBuoyancy>();
+            }
+
+            _rigidbody.useGravity = _buoyancy == null;
             _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
             _rigidbody.linearDamping = _linearDamping;
             _rigidbody.angularDamping = _angularDamping;
-            _rigidbody.constraints = RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+            _rigidbody.constraints = _buoyancy == null
+                ? RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ
+                : RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         }
 
         private void FixedUpdate()
@@ -49,9 +69,48 @@ namespace Features.Player
             }
 
             Vector2 input = _inputSource.MoveInput;
-            ApplyForwardForce(input.y);
-            ApplySteering(input.x);
+            bool canJump = _buoyancy == null || _buoyancy.IsInWater;
+            bool isInWater = _buoyancy != null && _buoyancy.IsInWater;
+            float controlMultiplier = isInWater ? 1f : _airControl;
+
+            HandleJump(canJump);
+            ApplyForwardForce(input.y * controlMultiplier);
+            ApplySteering(input.x * controlMultiplier);
             ClampPlanarVelocity();
+        }
+
+        private void HandleJump(bool isInWater)
+        {
+            if (isInWater &&
+                _inputSource.ConsumeJumpPressed() &&
+                Time.time >= _lastJumpTime + _jumpCooldown)
+            {
+                _rigidbody.AddForce(Vector3.up * _jumpImpulse, ForceMode.VelocityChange);
+                _lastJumpTime = Time.time;
+                _jumpHoldTime = 0f;
+                _jumpInProgress = true;
+            }
+
+            if (!_jumpInProgress)
+            {
+                return;
+            }
+
+            if (_inputSource.JumpHeld && _jumpHoldTime < _maxJumpHoldTime)
+            {
+                _rigidbody.AddForce(Vector3.up * _jumpHoldAcceleration, ForceMode.Acceleration);
+                _jumpHoldTime += Time.fixedDeltaTime;
+                return;
+            }
+
+            if (!_inputSource.JumpHeld && _rigidbody.linearVelocity.y > 0f)
+            {
+                Vector3 velocity = _rigidbody.linearVelocity;
+                velocity.y *= _jumpReleaseMultiplier;
+                _rigidbody.linearVelocity = velocity;
+            }
+
+            _jumpInProgress = false;
         }
 
         private void ApplyForwardForce(float throttle)
@@ -78,10 +137,7 @@ namespace Features.Player
 
         private void ClampPlanarVelocity()
         {
-            // La composante verticale appartient à la flottaison (BoatBuoyancy), pas au pilotage :
-            // l'écraser à 0 ici empêchait tout ballant sur la houle. On ne borne que le plan.
             float verticalSpeed = _rigidbody.linearVelocity.y;
-
             Vector3 planarVelocity = Vector3.ProjectOnPlane(_rigidbody.linearVelocity, Vector3.up);
             float forwardSpeed = Vector3.Dot(planarVelocity, transform.forward);
             float maximumSpeed = forwardSpeed >= 0f ? _maxForwardSpeed : _maxReverseSpeed;
