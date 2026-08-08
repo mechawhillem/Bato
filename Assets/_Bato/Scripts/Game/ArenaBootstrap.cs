@@ -83,9 +83,12 @@ namespace Bato
             NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
         }
 
-        void OnDestroy()
+        // NetworkBehaviour.OnDestroy fait son propre ménage (désinscription auprès du
+        // NetworkManager) : il faut l'appeler, pas le masquer.
+        public override void OnDestroy()
         {
             if (Instance == this) Instance = null;
+            base.OnDestroy();
         }
 
         // ------------------------------------------------------ Connexions

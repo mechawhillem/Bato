@@ -12,36 +12,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b4429313c96256d44bd333cd3dbb3557, type: 3}
   m_Name: WaveSettings
   m_EditorClassIdentifier: Assembly-CSharp::Bato.Water.WaveSettings
-  m_Seed: 1337
+  m_Seed: 1287294635
   m_WindDirection: 20
   m_DirectionalSpread: 18
-  m_SizeVariation: 0.25
+  m_SizeVariation: 0.369
   m_TotalAmplitude: 1.4
   m_SteepnessScale: 0.85
   m_Waves:
-  - Direction: {x: 0.97302294, y: 0.23070827}
-    Wavelength: 19.652216
-    Amplitude: 0.60350335
+  - Direction: {x: 0.8460737, y: 0.5330659}
+    Wavelength: 29.282135
+    Amplitude: 0.5596228
     Steepness: 0.85
-    SpeedMultiplier: 1.0690175
-  - Direction: {x: -0.18192557, y: 0.9833123}
-    Wavelength: 16.39727
-    Amplitude: 0.45630988
+    SpeedMultiplier: 1.0767171
+  - Direction: {x: -0.13827384, y: 0.99039406}
+    Wavelength: 16.945677
+    Amplitude: 0.43649507
     Steepness: 0.78200006
-    SpeedMultiplier: 0.9510759
-  - Direction: {x: 0.9049934, y: -0.42542556}
-    Wavelength: 8.018807
-    Amplitude: 0.19560352
+    SpeedMultiplier: 1.0238404
+  - Direction: {x: 0.91817534, y: -0.3961742}
+    Wavelength: 9.632128
+    Amplitude: 0.25341243
     Steepness: 0.7225
-    SpeedMultiplier: 0.9652045
-  - Direction: {x: 0.5820763, y: 0.81313413}
-    Wavelength: 5.862284
-    Amplitude: 0.09019857
+    SpeedMultiplier: 0.95425504
+  - Direction: {x: 0.79213685, y: 0.6103435}
+    Wavelength: 5.2744637
+    Amplitude: 0.102977455
     Steepness: 0.63750005
-    SpeedMultiplier: 0.9223689
-  - Direction: {x: 0.71117204, y: -0.703018}
-    Wavelength: 3.9310374
-    Amplitude: 0.05438471
+    SpeedMultiplier: 0.96389383
+  - Direction: {x: 0.6748909, y: -0.73791754}
+    Wavelength: 3.6188226
+    Amplitude: 0.04749218
     Steepness: 0.5525
-    SpeedMultiplier: 0.92120314
+    SpeedMultiplier: 0.9325406
   m_GlobalAmplitude: 1

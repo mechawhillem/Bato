@@ -462,22 +462,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Bato.BoatCannon
   ShowTopMostFoldoutHeaderGroup: 1
   m_CannonballPrefab: {fileID: 5878007302481284183, guid: d592856f8a096934aa8993c250a3dbd3, type: 3}
-<<<<<<< HEAD
-  m_MuzzleLeft: {fileID: 0}
-  m_MuzzleRight: {fileID: 0}
+  m_MuzzleLeft: {fileID: 8740705499837937348}
+  m_MuzzleRight: {fileID: 1138336543782419109}
   m_Cooldown: 0.8
   m_MinMuzzleSpeed: 16
   m_MaxMuzzleSpeed: 42
   m_MinElevation: 32
   m_MaxElevation: 55
   m_ChargeDuration: 1.15
---- !u!1001 &3498810760323043151
-=======
-  m_Muzzles:
-  - {fileID: 8740705499837937348}
-  - {fileID: 1138336543782419109}
-  m_Cooldown: 0.8
-  m_MuzzleSpeed: 26
 --- !u!114 &150898659319159763
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -560,7 +552,6 @@ Transform:
   m_Father: {fileID: 1660501911274231193}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2540756399010536950
->>>>>>> c8cbe086749a0957872a2324c82d220b755ab7c8
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
