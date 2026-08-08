@@ -19,6 +19,9 @@ namespace Bato
         [SerializeField] Text m_ModeLabel;
         [SerializeField] Text m_TeamLabel;
 
+        [SerializeField] Text m_JoinCodeLabel;
+
+        
         readonly StringBuilder m_Builder = new StringBuilder();
         bool m_IsReady;
         bool m_WasMatchStarted;
@@ -70,6 +73,8 @@ namespace Bato
                 }
                 else if (m_Panel) m_Panel.SetActive(false);
             }
+
+            RefreshJoinCode();
         }
 
         void ResolveReferences()
@@ -179,6 +184,14 @@ namespace Bato
         {
             if (m_Refreshing || !NetworkManager.Singleton.IsClient || ArenaBootstrap.Instance == null || !ArenaBootstrap.Instance.IsTeamMode) return;
             ArenaBootstrap.Instance.SetTeamServerRpc(teamIndex + 1);
+        }
+        
+        void RefreshJoinCode()
+        {
+            if (m_JoinCodeLabel == null) return;
+
+            string code = SessionRunner.Instance != null ? SessionRunner.Instance.JoinCode : string.Empty;
+            m_JoinCodeLabel.text = string.IsNullOrEmpty(code) ? string.Empty : $"Code : {code}";
         }
     }
 }
