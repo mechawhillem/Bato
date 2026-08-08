@@ -104,6 +104,24 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
+                },
+                {
+                    "name": "FlankLeft",
+                    "type": "Button",
+                    "id": "5b76d53e-d11d-4844-b0ef-c5f9be4d0b48",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "FlankRight",
+                    "type": "Button",
+                    "id": "747ad8b1-0eca-498d-b646-78d87c2cc527",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -494,7 +512,7 @@
                 },
                 {
                     "name": "1DAxis",
-                    "id": "ac42b6d1-1cf3-4797-aa84-4d3b99d2aa49",
+                    "id": "f63a7533-bbdf-4d4d-a506-2f63a7296236",
                     "path": "1DAxis",
                     "interactions": "",
                     "processors": "",
@@ -505,8 +523,8 @@
                 },
                 {
                     "name": "Positive",
-                    "id": "7808974c-bcf3-452a-98e4-d0439ba2ee18",
-                    "path": "<Keyboard>/w",
+                    "id": "eadaca29-b809-4c4e-a997-9e23cdca10b7",
+                    "path": "<Keyboard>/z",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
@@ -516,7 +534,7 @@
                 },
                 {
                     "name": "Positive",
-                    "id": "5731f503-8438-430e-8d0f-c7fbd95a0f4c",
+                    "id": "18ac37bd-bc95-444c-b77d-afc5af39c932",
                     "path": "<Keyboard>/upArrow",
                     "interactions": "",
                     "processors": "",
@@ -527,7 +545,7 @@
                 },
                 {
                     "name": "Negative",
-                    "id": "c17fc9f4-bc86-4f2b-ae3e-03b176e5796e",
+                    "id": "f8552d23-6806-4584-92ec-c5ccd59d6d12",
                     "path": "<Keyboard>/s",
                     "interactions": "",
                     "processors": "",
@@ -538,7 +556,7 @@
                 },
                 {
                     "name": "Negative",
-                    "id": "dd5dfa3b-68ed-420c-94c8-f53a59c6ae9d",
+                    "id": "8ca987c1-85f2-480d-96be-664df2beaca0",
                     "path": "<Keyboard>/downArrow",
                     "interactions": "",
                     "processors": "",
@@ -549,7 +567,7 @@
                 },
                 {
                     "name": "1DAxis",
-                    "id": "dbd3f02f-ed8a-40a4-b935-4245e9752e6d",
+                    "id": "0674a66c-17d9-4532-ad2f-dff55af48235",
                     "path": "1DAxis",
                     "interactions": "",
                     "processors": "",
@@ -560,7 +578,7 @@
                 },
                 {
                     "name": "Positive",
-                    "id": "16794947-9047-4240-8858-50dfe1312f4b",
+                    "id": "feb53c7a-50e2-4a1f-b82e-949ab842beb7",
                     "path": "<Gamepad>/rightTrigger",
                     "interactions": "",
                     "processors": "",
@@ -571,7 +589,7 @@
                 },
                 {
                     "name": "Negative",
-                    "id": "83a23796-f473-495e-a4c5-47649fc75c6f",
+                    "id": "35c272a5-fe45-4be8-9c10-9b2dea39f2aa",
                     "path": "<Gamepad>/leftTrigger",
                     "interactions": "",
                     "processors": "",
@@ -582,7 +600,7 @@
                 },
                 {
                     "name": "",
-                    "id": "ce7efe45-b403-4292-ab30-2845b9d6862b",
+                    "id": "b9c5d4a7-4bd7-4c88-97f9-ab6523604e56",
                     "path": "<Gamepad>/leftStick/x",
                     "interactions": "",
                     "processors": "",
@@ -593,7 +611,7 @@
                 },
                 {
                     "name": "1DAxis",
-                    "id": "43497456-55a6-4433-9b34-c1e970141f75",
+                    "id": "701d2b58-24ab-48cf-923a-756333474190",
                     "path": "1DAxis",
                     "interactions": "",
                     "processors": "",
@@ -604,7 +622,7 @@
                 },
                 {
                     "name": "Positive",
-                    "id": "5403be10-b5ec-4941-beb8-126a5bf4878e",
+                    "id": "8924cd14-8fac-4cb5-9a26-87f2af69b3f5",
                     "path": "<Keyboard>/d",
                     "interactions": "",
                     "processors": "",
@@ -615,7 +633,7 @@
                 },
                 {
                     "name": "Positive",
-                    "id": "eea66ea5-6d5a-4c3b-8357-d342da691c94",
+                    "id": "0cbbe7da-d961-4259-b9a0-0c2a437679d6",
                     "path": "<Keyboard>/rightArrow",
                     "interactions": "",
                     "processors": "",
@@ -626,8 +644,8 @@
                 },
                 {
                     "name": "Negative",
-                    "id": "2fc31617-af49-4ff1-8c9b-d7a4d2e10749",
-                    "path": "<Keyboard>/a",
+                    "id": "2e4b6c7c-9575-4131-979e-34302d81e683",
+                    "path": "<Keyboard>/q",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
@@ -637,7 +655,7 @@
                 },
                 {
                     "name": "Negative",
-                    "id": "f63a3af2-e875-4450-ac1b-51270df73f07",
+                    "id": "54569311-b44a-4cf9-a6fb-a41f4b56a50d",
                     "path": "<Keyboard>/leftArrow",
                     "interactions": "",
                     "processors": "",
@@ -645,6 +663,50 @@
                     "action": "Steer",
                     "isComposite": false,
                     "isPartOfComposite": true
+                },
+                {
+                    "name": "",
+                    "id": "d97c3726-26d1-458a-8ad6-36be09985c30",
+                    "path": "<Keyboard>/f",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "FlankLeft",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "c0638407-7be2-40d3-91e9-563894951d8e",
+                    "path": "<Gamepad>/leftShoulder",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "FlankLeft",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "cd254150-1f8d-4c9d-91c8-ca8f4da1d527",
+                    "path": "<Keyboard>/g",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "FlankRight",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3e5597ad-58fc-4dd1-8cae-8b7f92f0e40f",
+                    "path": "<Gamepad>/rightShoulder",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "FlankRight",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 }
             ]
         },
