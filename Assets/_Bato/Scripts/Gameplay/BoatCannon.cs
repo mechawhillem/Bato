@@ -16,22 +16,25 @@ namespace Bato
         [SerializeField] float m_Cooldown = 0.8f;
         [SerializeField] float m_MuzzleSpeed = 26f;
 
-        BoatInput m_Input;
+        BoatNetworkAuthority m_Authority;
         BoatHealth m_Health;
         float m_LocalNextFireTime;
         float m_ServerNextFireTime;
 
         void Awake()
         {
-            m_Input = GetComponent<BoatInput>();
+            m_Authority = GetComponent<BoatNetworkAuthority>();
             m_Health = GetComponent<BoatHealth>();
         }
 
         void Update()
         {
-            if (!IsOwner || m_Input == null) return;
+            if (!IsOwner || m_Authority == null) return;
             if (m_Health != null && !m_Health.IsAlive) return;
-            if (!m_Input.FireHeld || Time.time < m_LocalNextFireTime) return;
+
+            // L'action Attack vient du PlayerInput de Features.Player, pas d'un input à nous.
+            var fire = m_Authority.FireAction;
+            if (fire == null || !fire.IsPressed() || Time.time < m_LocalNextFireTime) return;
 
             m_LocalNextFireTime = Time.time + m_Cooldown;
 

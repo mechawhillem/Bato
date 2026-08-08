@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using Features.Player;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using Unity.Netcode.Transports.UTP;
@@ -34,7 +35,27 @@ namespace Bato.EditorTools
         const int k_SpawnCount = 6;
         const float k_ArenaRadius = 45f;
 
-        [MenuItem("Bato/Générer l'arène", priority = 0)]
+        /// <summary>
+        /// Régénère uniquement les prefabs, sans toucher à la scène. À utiliser dès que
+        /// quelqu'un a commencé à éditer Arena.unity à la main : le chemin des prefabs ne change
+        /// pas, donc leur GUID non plus, et les références de la scène survivent.
+        /// </summary>
+        [MenuItem("Bato/Régénérer les prefabs seulement", priority = 1)]
+        public static void GeneratePrefabsOnly()
+        {
+            EnsureFolders();
+
+            var ballPrefab = CreateCannonballPrefab();
+            var boatPrefab = CreateBoatPrefab(ballPrefab);
+            CreatePrefabList(ballPrefab);
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            Debug.Log($"[Bato] Prefabs régénérés ({boatPrefab.name}, {ballPrefab.name}). Scène intacte.");
+        }
+
+        [MenuItem("Bato/Générer l'arène (écrase la scène)", priority = 0)]
         public static void GenerateAll()
         {
             EnsureFolders();
@@ -143,15 +164,12 @@ namespace Bato.EditorTools
             hitbox.size = new Vector3(1.6f, 1.2f, 4.4f);
             hitbox.center = new Vector3(0f, 0.25f, 0f);
 
+            // Gravité, damping et contraintes sont posés par BoatMovementController dans son
+            // Awake : on ne règle ici que ce qu'il ne touche pas (masse pour les abordages,
+            // détection de collision pour ne pas traverser les murs à pleine vitesse).
             var body = root.AddComponent<Rigidbody>();
             body.mass = 60f;
-            body.useGravity = false;   // pas de flottaison simulée : le bateau reste au niveau 0
-            body.linearDamping = 1.1f;
-            body.angularDamping = 2.5f;
-            body.constraints = RigidbodyConstraints.FreezePositionY
-                             | RigidbodyConstraints.FreezeRotationX
-                             | RigidbodyConstraints.FreezeRotationZ;
-            body.interpolation = RigidbodyInterpolation.Interpolate;
+            body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
             // --- réseau
             root.AddComponent<NetworkObject>();
@@ -161,16 +179,23 @@ namespace Bato.EditorTools
             transformSync.SyncScaleX = transformSync.SyncScaleY = transformSync.SyncScaleZ = false;
             transformSync.Interpolate = true;
 
-            // --- gameplay
-            var input = root.AddComponent<BoatInput>();
-            root.AddComponent<BoatController>();
-            var health = root.AddComponent<BoatHealth>();
-            var cannon = root.AddComponent<BoatCannon>();
-
+            // --- pilotage : les scripts de Features.Player, tels quels
+            var playerInput = root.AddComponent<PlayerInput>();
             var inputActions = AssetDatabase.LoadAssetAtPath<InputActionAsset>(k_InputActionsPath);
             if (inputActions == null)
-                Debug.LogWarning($"[Bato] {k_InputActionsPath} introuvable — assigne l'InputActionAsset à la main sur le prefab Boat.");
-            SetField(input, "m_Actions", inputActions);
+                Debug.LogWarning($"[Bato] {k_InputActionsPath} introuvable — assigne les actions à la main sur le prefab Boat.");
+            SetField(playerInput, "m_Actions", inputActions);
+            SetStringField(playerInput, "m_DefaultActionMap", "Player");
+            SetIntField(playerInput, "m_NotificationBehavior", 3); // Invoke C# Events : on poll, pas de SendMessage
+
+            var inputSource = root.AddComponent<PlayerInputSource>();
+            var movement = root.AddComponent<BoatMovementController>();
+            SetField(movement, "_inputSource", inputSource);
+
+            // --- couche réseau et combat
+            root.AddComponent<BoatNetworkAuthority>();
+            var health = root.AddComponent<BoatHealth>();
+            var cannon = root.AddComponent<BoatCannon>();
 
             SetField(cannon, "m_CannonballPrefab", ballPrefab);
             SetArrayField(cannon, "m_Muzzles", new Object[] { muzzleLeft.transform, muzzleRight.transform });
@@ -538,6 +563,32 @@ namespace Bato.EditorTools
                 return;
             }
             property.objectReferenceValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        static void SetStringField(Object target, string fieldName, string value)
+        {
+            var serialized = new SerializedObject(target);
+            var property = serialized.FindProperty(fieldName);
+            if (property == null)
+            {
+                Debug.LogError($"[Bato] Champ '{fieldName}' introuvable sur {target.GetType().Name}.");
+                return;
+            }
+            property.stringValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        static void SetIntField(Object target, string fieldName, int value)
+        {
+            var serialized = new SerializedObject(target);
+            var property = serialized.FindProperty(fieldName);
+            if (property == null)
+            {
+                Debug.LogError($"[Bato] Champ '{fieldName}' introuvable sur {target.GetType().Name}.");
+                return;
+            }
+            property.intValue = value;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 

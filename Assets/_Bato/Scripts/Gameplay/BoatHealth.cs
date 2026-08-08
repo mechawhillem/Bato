@@ -55,7 +55,17 @@ namespace Bato
 
         void OnHealthChanged(int _, int current) => HealthChanged?.Invoke(current, m_MaxHealth);
 
-        void OnAliveChanged(bool _, bool alive) => ApplyAliveVisuals(alive);
+        void OnAliveChanged(bool _, bool alive)
+        {
+            ApplyAliveVisuals(alive);
+
+            // Un bateau coulé ne se pilote plus. Seul le propriétaire a du contrôle à couper.
+            if (IsOwner)
+            {
+                var authority = GetComponent<BoatNetworkAuthority>();
+                if (authority != null) authority.SetControlEnabled(alive);
+            }
+        }
 
         void ApplyAliveVisuals(bool alive)
         {
@@ -102,8 +112,8 @@ namespace Bato
         [Rpc(SendTo.Owner)]
         void TeleportRpc(Vector3 position, Quaternion rotation)
         {
-            var controller = GetComponent<BoatController>();
-            if (controller != null) controller.TeleportTo(position, rotation);
+            var authority = GetComponent<BoatNetworkAuthority>();
+            if (authority != null) authority.TeleportTo(position, rotation);
             else transform.SetPositionAndRotation(position, rotation);
         }
     }
