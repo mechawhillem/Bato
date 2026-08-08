@@ -11,7 +11,7 @@ namespace Bato
     public class Cannonball : NetworkBehaviour
     {
         [SerializeField] int m_Damage = 20;
-        [SerializeField] float m_Lifetime = 4f;
+        [SerializeField] float m_Lifetime = 6f;
         [SerializeField] GameObject m_ImpactVfxPrefab;
 
         Rigidbody m_Rigidbody;

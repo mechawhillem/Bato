@@ -39,11 +39,19 @@ namespace Bato
         void Awake()
         {
             Instance = this;
+
+            // Callback d'approbation AVANT tout StartHost (plus sûr que Start).
+            var nm = NetworkManager.Singleton;
+            if (nm != null)
+            {
+                nm.NetworkConfig.ConnectionApproval = true;
+                nm.ConnectionApprovalCallback = ApproveConnection;
+            }
         }
 
         void Start()
         {
-            // Doit être branché avant que le SDK Sessions ne démarre le NetworkManager.
+            // Filet si le NetworkManager n'était pas encore prêt dans Awake.
             var nm = NetworkManager.Singleton;
             if (nm == null)
             {

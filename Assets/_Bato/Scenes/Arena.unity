@@ -1606,7 +1606,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Bato.SessionRunner
   m_MaxPlayers: 4
   m_DirectAddress: 127.0.0.1
-  m_DirectPort: 7777
+  m_DirectPort: 9787
 --- !u!4 &1291088498
 Transform:
   m_ObjectHideFlags: 0
@@ -2435,9 +2435,9 @@ MonoBehaviour:
   m_DisconnectTimeoutMS: 30000
   ConnectionData:
     Address: 127.0.0.1
-    Port: 7777
+    Port: 9787
     WebSocketPath: /
-    ServerListenAddress: 
+    ServerListenAddress: 127.0.0.1
     ClientBindPort: 0
   DebugSimulator:
     PacketDelayMS: 0

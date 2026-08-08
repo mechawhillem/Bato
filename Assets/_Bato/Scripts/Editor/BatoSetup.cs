@@ -47,7 +47,7 @@ namespace Bato.EditorTools
 
             var ballPrefab = CreateCannonballPrefab();
             var boatPrefab = CreateBoatPrefab(ballPrefab);
-            CreatePrefabList(ballPrefab);
+            CreatePrefabList(boatPrefab, ballPrefab);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -62,7 +62,7 @@ namespace Bato.EditorTools
 
             var ballPrefab = CreateCannonballPrefab();
             var boatPrefab = CreateBoatPrefab(ballPrefab);
-            var prefabList = CreatePrefabList(ballPrefab);
+            var prefabList = CreatePrefabList(boatPrefab, ballPrefab);
 
             BuildScene(boatPrefab, prefabList);
 
@@ -98,8 +98,8 @@ namespace Bato.EditorTools
             renderer.sharedMaterial = CreateMaterial("Cannonball", new Color(0.12f, 0.12f, 0.14f));
 
             var body = root.AddComponent<Rigidbody>();
-            body.useGravity = false;              // tir tendu : bien plus facile à viser en jam
-            body.linearDamping = 0f;
+            body.useGravity = true;               // trajectoire balistique : le boulet retombe
+            body.linearDamping = 0.05f;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             body.interpolation = RigidbodyInterpolation.Interpolate;
 
@@ -209,7 +209,7 @@ namespace Bato.EditorTools
             return prefab;
         }
 
-        static NetworkPrefabsList CreatePrefabList(GameObject ballPrefab)
+        static NetworkPrefabsList CreatePrefabList(GameObject boatPrefab, GameObject ballPrefab)
         {
             var list = AssetDatabase.LoadAssetAtPath<NetworkPrefabsList>(k_PrefabListPath);
             if (list == null)
@@ -221,8 +221,12 @@ namespace Bato.EditorTools
             var serialized = new SerializedObject(list);
             var listProperty = serialized.FindProperty("List");
             listProperty.ClearArray();
+
             listProperty.InsertArrayElementAtIndex(0);
-            listProperty.GetArrayElementAtIndex(0).FindPropertyRelative("Prefab").objectReferenceValue = ballPrefab;
+            listProperty.GetArrayElementAtIndex(0).FindPropertyRelative("Prefab").objectReferenceValue = boatPrefab;
+            listProperty.InsertArrayElementAtIndex(1);
+            listProperty.GetArrayElementAtIndex(1).FindPropertyRelative("Prefab").objectReferenceValue = ballPrefab;
+
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             EditorUtility.SetDirty(list);
@@ -435,12 +439,42 @@ namespace Bato.EditorTools
             fillImage.fillMethod = Image.FillMethod.Horizontal;
             fillImage.fillAmount = 1f;
 
+            // Jauge de charge des canons (bas centre).
+            var powerRoot = NewUIObject("PowerGauge", root.transform);
+            var powerRootRect = powerRoot.GetComponent<RectTransform>();
+            powerRootRect.anchorMin = powerRootRect.anchorMax = new Vector2(0.5f, 0f);
+            powerRootRect.sizeDelta = new Vector2(360f, 70f);
+            powerRootRect.anchoredPosition = new Vector2(0f, 110f);
+
+            var powerLabel = MakeText(powerRoot.transform, "PowerLabel", "", 22, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 0.75f), new Vector2(360f, 30f));
+
+            var powerBack = NewUIObject("PowerBarBack", powerRoot.transform);
+            var powerBackRect = powerBack.GetComponent<RectTransform>();
+            powerBackRect.anchorMin = powerBackRect.anchorMax = new Vector2(0.5f, 0.2f);
+            powerBackRect.sizeDelta = new Vector2(360f, 22f);
+            powerBackRect.anchoredPosition = Vector2.zero;
+            powerBack.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+
+            var powerFillGo = NewUIObject("PowerBarFill", powerBack.transform);
+            Stretch(powerFillGo.GetComponent<RectTransform>());
+            var powerFill = powerFillGo.AddComponent<Image>();
+            powerFill.color = new Color(0.95f, 0.7f, 0.15f);
+            powerFill.type = Image.Type.Filled;
+            powerFill.fillMethod = Image.FillMethod.Horizontal;
+            powerFill.fillAmount = 0f;
+
+            powerRoot.SetActive(false);
+
             var hud = canvas.AddComponent<HUD>();
             SetField(hud, "m_Root", root);
             SetField(hud, "m_HealthLabel", healthLabel);
             SetField(hud, "m_HealthFill", fillImage);
             SetField(hud, "m_ScoreboardLabel", scoreboard);
             SetField(hud, "m_JoinCodeLabel", joinCode);
+            SetField(hud, "m_PowerRoot", powerRoot);
+            SetField(hud, "m_PowerFill", powerFill);
+            SetField(hud, "m_PowerLabel", powerLabel);
 
             root.SetActive(false);
         }

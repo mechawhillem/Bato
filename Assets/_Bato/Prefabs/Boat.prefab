@@ -275,7 +275,11 @@ MonoBehaviour:
   m_MuzzleLeft: {fileID: 0}
   m_MuzzleRight: {fileID: 0}
   m_Cooldown: 0.8
-  m_MuzzleSpeed: 26
+  m_MinMuzzleSpeed: 16
+  m_MaxMuzzleSpeed: 42
+  m_MinElevation: 32
+  m_MaxElevation: 55
+  m_ChargeDuration: 1.15
 --- !u!1001 &3498810760323043151
 PrefabInstance:
   m_ObjectHideFlags: 0
