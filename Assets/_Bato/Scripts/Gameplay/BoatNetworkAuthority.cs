@@ -1,3 +1,4 @@
+using Bato.Water;
 using Features.Player;
 using Unity.Netcode;
 using UnityEngine;
@@ -21,6 +22,7 @@ namespace Bato
         PlayerInput m_PlayerInput;
         PlayerInputSource m_InputSource;
         BoatMovementController m_Movement;
+        BoatBuoyancy m_Buoyancy;
 
         /// <summary>Action de tir du propriétaire. Null tant que le bateau n'est pas possédé.</summary>
         public InputAction FireAction { get; private set; }
@@ -31,11 +33,13 @@ namespace Bato
             m_PlayerInput = GetComponent<PlayerInput>();
             m_InputSource = GetComponent<PlayerInputSource>();
             m_Movement = GetComponent<BoatMovementController>();
+            m_Buoyancy = GetComponent<BoatBuoyancy>();
 
             // Tout est coupé tant qu'on ne sait pas si ce bateau nous appartient. Awake tourne
             // même sur un composant désactivé, donc BoatMovementController configure quand même
             // le Rigidbody (gravité, damping, contraintes) sur tous les clients.
             SetControlEnabled(false);
+            if (m_Buoyancy) m_Buoyancy.enabled = false;
         }
 
         public override void OnNetworkSpawn()
@@ -44,6 +48,11 @@ namespace Bato
 
             m_Rigidbody.isKinematic = !owned;
             SetControlEnabled(owned);
+
+            // La flottaison n'est simulée que chez le propriétaire ; les autres reçoivent le
+            // tangage tout cuit via le NetworkTransform. Volontairement hors de
+            // SetControlEnabled : une épave continue de flotter après la mort du joueur.
+            if (m_Buoyancy) m_Buoyancy.enabled = owned;
 
             if (owned && m_PlayerInput != null && m_PlayerInput.actions != null)
             {

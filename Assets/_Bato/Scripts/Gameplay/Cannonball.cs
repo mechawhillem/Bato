@@ -1,3 +1,4 @@
+using Bato.Water;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -39,7 +40,20 @@ namespace Bato
         void Update()
         {
             if (!IsServer || m_Consumed) return;
-            if (Time.time >= m_DespawnTime) Consume(transform.position);
+
+            if (Time.time >= m_DespawnTime)
+            {
+                Consume(transform.position);
+                return;
+            }
+
+            // Amerrissage. Le serveur fait foi, mais comme la houle est une fonction pure du temps
+            // serveur, chaque client aurait trouvé le même point d'impact.
+            var field = WaveField.Instance;
+            if (field != null && transform.position.y < field.SampleHeight(transform.position))
+            {
+                Consume(transform.position);
+            }
         }
 
         void OnTriggerEnter(Collider other)

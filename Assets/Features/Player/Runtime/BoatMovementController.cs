@@ -78,6 +78,10 @@ namespace Features.Player
 
         private void ClampPlanarVelocity()
         {
+            // La composante verticale appartient à la flottaison (BoatBuoyancy), pas au pilotage :
+            // l'écraser à 0 ici empêchait tout ballant sur la houle. On ne borne que le plan.
+            float verticalSpeed = _rigidbody.linearVelocity.y;
+
             Vector3 planarVelocity = Vector3.ProjectOnPlane(_rigidbody.linearVelocity, Vector3.up);
             float forwardSpeed = Vector3.Dot(planarVelocity, transform.forward);
             float maximumSpeed = forwardSpeed >= 0f ? _maxForwardSpeed : _maxReverseSpeed;
@@ -85,12 +89,9 @@ namespace Features.Player
             if (planarVelocity.sqrMagnitude > maximumSpeed * maximumSpeed)
             {
                 planarVelocity = planarVelocity.normalized * maximumSpeed;
-                _rigidbody.linearVelocity = new Vector3(planarVelocity.x, 0f, planarVelocity.z);
             }
-            else
-            {
-                _rigidbody.linearVelocity = new Vector3(planarVelocity.x, 0f, planarVelocity.z);
-            }
+
+            _rigidbody.linearVelocity = new Vector3(planarVelocity.x, verticalSpeed, planarVelocity.z);
         }
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using Bato.Water;
 using Features.Player;
 using Unity.Netcode;
 using Unity.Netcode.Components;
@@ -25,7 +26,11 @@ namespace Bato.EditorTools
         const string k_Root = "Assets/_Bato";
         const string k_PrefabDir = k_Root + "/Prefabs";
         const string k_MaterialDir = k_Root + "/Materials";
+        const string k_MeshDir = k_Root + "/Meshes";
         const string k_SceneDir = k_Root + "/Scenes";
+        const string k_WaveSettingsPath = k_Root + "/WaveSettings.asset";
+        const string k_OceanMeshPath = k_MeshDir + "/OceanGrid.asset";
+        const string k_OceanMaterialPath = k_MaterialDir + "/Ocean.mat";
         const string k_ScenePath = k_SceneDir + "/Arena.unity";
         const string k_BoatPath = k_PrefabDir + "/Boat.prefab";
         const string k_BallPath = k_PrefabDir + "/Cannonball.prefab";
@@ -34,6 +39,10 @@ namespace Bato.EditorTools
 
         const int k_SpawnCount = 6;
         const float k_ArenaRadius = 45f;
+
+        // La grille de mer déborde largement l'arène pour que l'horizon reste de l'eau.
+        const float k_OceanSize = 190f;
+        const int k_OceanResolution = 140;   // quads par côté -> 141² sommets, sous la limite 16 bits
 
         /// <summary>
         /// Régénère uniquement les prefabs, sans toucher à la scène. À utiliser dès que
@@ -76,7 +85,7 @@ namespace Bato.EditorTools
 
         static void EnsureFolders()
         {
-            foreach (var dir in new[] { k_Root, k_PrefabDir, k_MaterialDir, k_SceneDir })
+            foreach (var dir in new[] { k_Root, k_PrefabDir, k_MaterialDir, k_MeshDir, k_SceneDir })
             {
                 if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
             }
@@ -192,6 +201,11 @@ namespace Bato.EditorTools
             var movement = root.AddComponent<BoatMovementController>();
             SetField(movement, "_inputSource", inputSource);
 
+            // --- flottaison : désactivée dans le prefab, allumée au spawn pour le propriétaire
+            var buoyancy = root.AddComponent<BoatBuoyancy>();
+            SetProbeOffsets(buoyancy, hitbox);
+            buoyancy.enabled = false;
+
             // --- couche réseau et combat
             root.AddComponent<BoatNetworkAuthority>();
             var health = root.AddComponent<BoatHealth>();
@@ -206,6 +220,47 @@ namespace Bato.EditorTools
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, k_BoatPath);
             Object.DestroyImmediate(root);
             return prefab;
+        }
+
+        /// <summary>
+        /// Place les quatre sondes aux coins de la coque et accorde la profondeur de sonde à la
+        /// force de poussée, pour que le bateau se stabilise pile à sa ligne de flottaison.
+        ///
+        /// À l'équilibre, poussée = poids, donc submersion = 1 / force. Le bateau s'enfonce donc
+        /// de submersion × profondeurDeSonde. En posant profondeurDeSonde = -yDeSonde × force, la
+        /// coque se stabilise avec son origine au niveau de l'eau, quelle que soit sa taille.
+        /// </summary>
+        static void SetProbeOffsets(BoatBuoyancy buoyancy, BoxCollider hull)
+        {
+            const float buoyancyStrength = 1.6f;
+
+            var extents = hull.size * 0.5f;
+            float x = extents.x * 0.85f;
+            float z = extents.z * 0.8f;
+            float y = -extents.y * 0.5f;   // sondes sous la ligne de flottaison
+
+            var serialized = new SerializedObject(buoyancy);
+            serialized.FindProperty("m_BuoyancyStrength").floatValue = buoyancyStrength;
+            serialized.FindProperty("m_ProbeDepth").floatValue = -y * buoyancyStrength;
+
+            var property = serialized.FindProperty("m_ProbeOffsets");
+            property.ClearArray();
+
+            var offsets = new[]
+            {
+                new Vector3(-x, y,  z),
+                new Vector3( x, y,  z),
+                new Vector3(-x, y, -z),
+                new Vector3( x, y, -z),
+            };
+
+            for (int i = 0; i < offsets.Length; i++)
+            {
+                property.InsertArrayElementAtIndex(i);
+                property.GetArrayElementAtIndex(i).vector3Value = offsets[i];
+            }
+
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         static NetworkPrefabsList CreatePrefabList(GameObject ballPrefab)
@@ -264,15 +319,19 @@ namespace Bato.EditorTools
 
         static void CreateSea()
         {
-            var sea = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            sea.name = "Sea";
-            sea.transform.localScale = Vector3.one * (k_ArenaRadius * 0.35f);
-            sea.GetComponent<MeshRenderer>().sharedMaterial =
-                CreateMaterial("Sea", new Color(0.12f, 0.35f, 0.55f));
+            // La mer n'a pas de collider : la flottaison est une force, pas une collision. Un sol
+            // solide se battrait avec les sondes de BoatBuoyancy.
+            var ocean = new GameObject("Ocean");
+            ocean.AddComponent<MeshFilter>().sharedMesh = CreateOceanMesh();
 
-            // Pas de collider sur la mer : les bateaux ont FreezePositionY, un sol solide ne
-            // ferait que se battre avec la contrainte.
-            Object.DestroyImmediate(sea.GetComponent<MeshCollider>());
+            var renderer = ocean.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = CreateOceanMaterial();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            var waveField = new GameObject("WaveField");
+            waveField.AddComponent<NetworkObject>();
+            var field = waveField.AddComponent<WaveField>();
+            SetField(field, "m_Settings", CreateWaveSettings());
 
             // Murs invisibles : on ne sort pas de l'arène.
             var walls = new GameObject("Walls");
@@ -286,6 +345,100 @@ namespace Bato.EditorTools
                 var box = wall.AddComponent<BoxCollider>();
                 box.size = new Vector3(k_ArenaRadius * 2.2f, 12f, 1f);
             }
+        }
+
+        // ------------------------------------------------------------- Océan
+
+        static WaveSettings CreateWaveSettings()
+        {
+            var settings = AssetDatabase.LoadAssetAtPath<WaveSettings>(k_WaveSettingsPath);
+            if (settings != null) return settings;   // ne jamais écraser un réglage déjà tuné
+
+            settings = ScriptableObject.CreateInstance<WaveSettings>();
+            AssetDatabase.CreateAsset(settings, k_WaveSettingsPath);
+            return settings;
+        }
+
+        static Material CreateOceanMaterial()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(k_OceanMaterialPath);
+            if (existing != null) return existing;
+
+            var shader = Shader.Find("Bato/Ocean");
+            if (shader == null)
+            {
+                Debug.LogError("[Bato] Shader 'Bato/Ocean' introuvable — la mer sera rose. Vérifie Assets/_Bato/Shaders/Ocean.shader.");
+                return CreateMaterial("OceanFallback", new Color(0.12f, 0.35f, 0.55f));
+            }
+
+            var material = new Material(shader);
+            AssetDatabase.CreateAsset(material, k_OceanMaterialPath);
+            return material;
+        }
+
+        /// <summary>
+        /// Grille plate régulière. Toute la forme vient du shader : le mesh n'est qu'un support
+        /// de sommets, donc pas de normales ni d'UV à générer.
+        /// </summary>
+        static Mesh CreateOceanMesh()
+        {
+            int side = k_OceanResolution + 1;
+            int vertexCount = side * side;
+
+            var vertices = new Vector3[vertexCount];
+            var indices = new int[k_OceanResolution * k_OceanResolution * 6];
+
+            float step = k_OceanSize / k_OceanResolution;
+            float origin = -k_OceanSize * 0.5f;
+
+            for (int z = 0; z < side; z++)
+            {
+                for (int x = 0; x < side; x++)
+                {
+                    vertices[z * side + x] = new Vector3(origin + x * step, 0f, origin + z * step);
+                }
+            }
+
+            int index = 0;
+            for (int z = 0; z < k_OceanResolution; z++)
+            {
+                for (int x = 0; x < k_OceanResolution; x++)
+                {
+                    int bottomLeft = z * side + x;
+                    int topLeft = bottomLeft + side;
+
+                    indices[index++] = bottomLeft;
+                    indices[index++] = topLeft;
+                    indices[index++] = topLeft + 1;
+
+                    indices[index++] = bottomLeft;
+                    indices[index++] = topLeft + 1;
+                    indices[index++] = bottomLeft + 1;
+                }
+            }
+
+            var mesh = new Mesh { name = "OceanGrid" };
+            mesh.indexFormat = vertexCount > 65535
+                ? UnityEngine.Rendering.IndexFormat.UInt32
+                : UnityEngine.Rendering.IndexFormat.UInt16;
+            mesh.vertices = vertices;
+            mesh.triangles = indices;
+
+            // Les sommets sont déplacés dans le vertex shader : Unity ne le sait pas et culerait
+            // la mer dès qu'on regarde vers l'horizon. On gonfle les bornes à la main.
+            mesh.bounds = new Bounds(Vector3.zero, new Vector3(k_OceanSize, 20f, k_OceanSize));
+
+            var existing = AssetDatabase.LoadAssetAtPath<Mesh>(k_OceanMeshPath);
+            if (existing != null)
+            {
+                EditorUtility.CopySerialized(mesh, existing);
+                Object.DestroyImmediate(mesh);
+                EditorUtility.SetDirty(existing);
+                return existing;
+            }
+
+            AssetDatabase.CreateAsset(mesh, k_OceanMeshPath);
+            return mesh;
         }
 
         static Object[] CreateSpawnPoints()
