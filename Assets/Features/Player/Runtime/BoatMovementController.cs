@@ -53,16 +53,18 @@ namespace Features.Player
             if (_buoyancy == null)
                 _buoyancy = GetComponent<BoatBuoyancy>();
 
-            // La flottaison réactive gravité + contraintes dans son FixedUpdate.
             _rigidbody.useGravity = true;
             _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
             _rigidbody.linearDamping = _linearDamping;
             _rigidbody.angularDamping = _angularDamping;
-            if (_buoyancy == null)
-            {
-                _rigidbody.constraints =
-                    RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
-            }
+
+            // With buoyancy, the hull owns its own vertical motion and its roll and pitch: it has
+            // to be free on every axis. Freezing Y here used to leave the boat pinned in mid-air —
+            // unable to float or to jump — whenever buoyancy found no water surface to sit on.
+            // Without buoyancy we fall back to a flat sea: upright, gravity does the rest.
+            _rigidbody.constraints = _buoyancy != null
+                ? RigidbodyConstraints.None
+                : RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         }
 
         private void FixedUpdate()
@@ -86,9 +88,24 @@ namespace Features.Player
 
         private void HandleJump(bool canJump)
         {
-            if (!canJump ||
-                !_inputSource.ConsumeJumpPressed() ||
-                Time.time < _lastJumpTime + _jumpCooldown)
+            if (canJump &&
+                _inputSource.ConsumeJumpPressed() &&
+                Time.time >= _lastJumpTime + _jumpCooldown)
+            {
+                _rigidbody.AddForce(Vector3.up * _jumpImpulse, ForceMode.VelocityChange);
+                _lastJumpTime = Time.time;
+                _jumpHoldTime = 0f;
+                _jumpInProgress = true;
+
+                // Let the water stop dragging the hull down while it climbs out, otherwise the
+                // buoyancy damping eats most of the impulse before the boat clears the surface.
+                if (_buoyancy != null)
+                {
+                    _buoyancy.NotifyJump();
+                }
+            }
+
+            if (!_jumpInProgress)
             {
                 return;
             }

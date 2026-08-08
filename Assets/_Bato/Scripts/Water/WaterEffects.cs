@@ -51,8 +51,7 @@ namespace Bato.Water
         {
             if (Instance == null) return;
 
-            var field = WaveField.Instance;
-            if (field != null) position.y = field.SampleHeight(position);
+            if (WaterSurface.TrySampleHeight(position, out float height)) position.y = height;
 
             Instance.Burst(position, scale, Color.white, Instance.m_SplashParticles, upwardBias: 1f);
         }

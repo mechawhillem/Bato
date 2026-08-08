@@ -17,8 +17,12 @@ namespace Bato.Water
     ///
     /// Ce composant pousse aussi les mêmes paramètres dans les globales shader, pour que le GPU
     /// dessine exactement la surface sur laquelle le CPU fait flotter les bateaux.
+    ///
+    /// C'est l'une des deux mers possibles : le gameplay ne s'adresse pas à elle directement mais
+    /// à <see cref="WaterSurface"/>, ce qui permet de la remplacer par l'eau stylisée de Bitgem
+    /// (<see cref="BitgemWaterSurface"/>) en désactivant simplement cet objet.
     /// </summary>
-    public class WaveField : NetworkBehaviour
+    public class WaveField : NetworkBehaviour, IWaterSurface
     {
         public static WaveField Instance { get; private set; }
 
@@ -83,11 +87,17 @@ namespace Bato.Water
             }
         }
 
+        // L'inscription suit l'activation de l'objet, pas sa durée de vie : désactiver l'objet
+        // Ocean doit rendre la main à l'autre mer, sans rien avoir à débrancher ailleurs.
+        void OnEnable() => WaterSurface.Register(this);
+        void OnDisable() => WaterSurface.Unregister(this);
+
         // NetworkBehaviour.OnDestroy fait son propre ménage (désinscription auprès du
         // NetworkManager) : il faut l'appeler, pas le masquer.
         public override void OnDestroy()
         {
             if (Instance == this) Instance = null;
+            WaterSurface.Unregister(this);
             base.OnDestroy();
         }
 
@@ -253,6 +263,23 @@ namespace Bato.Water
             float time = WaveTime;
             var target = new Vector2(worldPosition.x, worldPosition.z);
             return Displacement(SolveGridPosition(target, time), time).y;
+        }
+
+        /// <summary>
+        /// Notre mer est infinie : il y a de l'eau partout. Le seul cas sans surface est un
+        /// WaveField sans réglages, où il vaut mieux ne rien faire flotter que faire flotter sur
+        /// un plan à zéro qui n'est dessiné nulle part.
+        /// </summary>
+        public bool TrySampleHeight(Vector3 worldPosition, out float height)
+        {
+            if (m_Settings == null)
+            {
+                height = 0f;
+                return false;
+            }
+
+            height = SampleHeight(worldPosition);
+            return true;
         }
 
         /// <summary>

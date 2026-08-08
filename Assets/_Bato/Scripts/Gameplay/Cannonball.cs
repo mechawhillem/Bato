@@ -51,8 +51,8 @@ namespace Bato
 
             // Amerrissage. Le serveur fait foi, mais comme la houle est une fonction pure du temps
             // serveur, chaque client aurait trouvé le même point d'impact.
-            var field = WaveField.Instance;
-            if (field != null && transform.position.y < field.SampleHeight(transform.position))
+            if (WaterSurface.TrySampleHeight(transform.position, out float waterHeight) &&
+                transform.position.y < waterHeight)
             {
                 Consume(transform.position);
             }
