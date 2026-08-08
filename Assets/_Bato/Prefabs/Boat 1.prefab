@@ -327,11 +327,12 @@ MonoBehaviour:
   m_MuzzleLeft: {fileID: 4561203764443761790}
   m_MuzzleRight: {fileID: 8008990806577317068}
   m_Cooldown: 0.8
-  m_MinMuzzleSpeed: 16
-  m_MaxMuzzleSpeed: 42
-  m_MinElevation: 32
-  m_MaxElevation: 55
-  m_ChargeDuration: 1.15
+  m_MinMuzzleSpeed: 24
+  m_MaxMuzzleSpeed: 38
+  m_MinElevation: 3
+  m_MaxElevation: 38
+  m_ChargeDuration: 2.5
+  m_ArcEase: 1.75
 --- !u!114 &2675132634545105627
 MonoBehaviour:
   m_ObjectHideFlags: 0
