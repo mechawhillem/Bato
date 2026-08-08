@@ -1,4 +1,15 @@
-// Mer stylisée : déplacement de Gerstner en vertex, normale analytique, écume sur les crêtes.
+// Mer stylisée façon Sea of Thieves : déplacement de Gerstner en vertex, normale analytique,
+// dégradé de profondeur, diffusion sous-surface sur les crêtes et écume pilotée par le pincement.
+//
+// Ce qui fait le look de Rare, dans l'ordre d'importance :
+//   1. la GÉOMÉTRIE — des crêtes réellement pointues, pas des dunes (voir WaveSettings) ;
+//   2. la diffusion sous-surface — une crête vue à contre-jour devient vert-turquoise lumineux,
+//      c'est la signature visuelle du jeu ;
+//   3. un dégradé creux/crête très contrasté et très saturé ;
+//   4. de l'écume blanche, UNIQUEMENT là où la crête se pince.
+//
+// Volontairement PAS de cel-shading : la mer de SoT est lissée, son côté « peint » vient de la
+// palette et du contre-jour, pas de bandes d'éclairage.
 //
 // ⚠ BatoGerstner() ci-dessous est le miroir exact de WaveField.Displacement() et
 // WaveField.SampleNormal() en C#. Les deux lisent les mêmes globales (_BatoWave*), poussées
@@ -8,18 +19,27 @@ Shader "Bato/Ocean"
 {
     Properties
     {
-        _DeepColor        ("Couleur des creux", Color)   = (0.02, 0.15, 0.28, 1)
-        _ShallowColor     ("Couleur des crêtes", Color)  = (0.10, 0.45, 0.60, 1)
-        _FoamColor        ("Couleur de l'écume", Color)  = (0.92, 0.97, 1.00, 1)
+        [Header(Couleurs)]
+        _DeepColor        ("Creux", Color)                   = (0.004, 0.105, 0.18, 1)
+        _ShallowColor     ("Crêtes", Color)                  = (0.05, 0.42, 0.48, 1)
+        _HorizonColor     ("Horizon", Color)                 = (0.32, 0.66, 0.75, 1)
 
-        _FoamThreshold    ("Seuil d'écume", Range(0, 1))     = 0.45
-        _FoamSoftness     ("Douceur de l'écume", Range(0.01, 0.6)) = 0.18
+        [Header(Contre jour)]
+        _SubsurfaceColor  ("Couleur de transparence", Color) = (0.12, 0.78, 0.62, 1)
+        _SubsurfaceStrength ("Force de transparence", Range(0, 4)) = 1.9
+        _SubsurfacePower  ("Concentration du contre-jour", Range(1, 8)) = 3.5
 
-        _Smoothness       ("Brillance", Range(0.01, 1))     = 0.75
+        [Header(Ecume)]
+        _FoamColor        ("Couleur de l'écume", Color)      = (0.92, 0.97, 0.98, 1)
+        _FoamStrength     ("Force de l'écume", Range(0, 1))  = 0.6
+        _FoamThreshold    ("Seuil de l'écume", Range(0, 1))  = 0.5
+
+        [Header(Lumiere)]
+        _AmbientBoost     ("Lumière ambiante", Range(0, 1))  = 0.45
+        _Smoothness       ("Brillance", Range(0.01, 1))      = 0.75
         _SpecularStrength ("Force du spéculaire", Range(0, 4)) = 1.6
-        _FresnelPower     ("Puissance du Fresnel", Range(0.5, 8)) = 4.0
-        _FresnelStrength  ("Force du Fresnel", Range(0, 1))  = 0.35
-        _AmbientBoost     ("Lumière ambiante", Range(0, 1))  = 0.35
+        _FresnelPower     ("Puissance du Fresnel", Range(0.5, 8)) = 5
+        _FresnelStrength  ("Force du Fresnel", Range(0, 1))  = 0.5
     }
 
     SubShader
@@ -39,33 +59,40 @@ Shader "Bato/Ocean"
         CBUFFER_START(UnityPerMaterial)
             float4 _DeepColor;
             float4 _ShallowColor;
+            float4 _HorizonColor;
+            float4 _SubsurfaceColor;
             float4 _FoamColor;
+            float  _SubsurfaceStrength;
+            float  _SubsurfacePower;
+            float  _FoamStrength;
             float  _FoamThreshold;
-            float  _FoamSoftness;
+            float  _AmbientBoost;
             float  _Smoothness;
             float  _SpecularStrength;
             float  _FresnelPower;
             float  _FresnelStrength;
-            float  _AmbientBoost;
         CBUFFER_END
 
         // Globales poussées par WaveField.PushShaderGlobals(). Hors du CBUFFER matériau :
         // ce sont des globales de shader, pas des propriétés par matériau.
-        float4 _BatoWaveDirAmp[4];   // xy = direction, z = amplitude, w = longueur d'onde
-        float4 _BatoWaveShape[4];    // x  = steepness, y = multiplicateur de vitesse
+        // Taille fixée à WaveSettings.MaxWaves : si tu changes l'un, change l'autre.
+        float4 _BatoWaveDirAmp[5];   // xy = direction, z = amplitude, w = longueur d'onde
+        float4 _BatoWaveShape[5];    // x  = steepness, y = multiplicateur de vitesse
         int    _BatoWaveCount;
         float  _BatoWaveTime;
         float  _BatoSeaState;
+        float  _BatoWaveHeight;      // somme des amplitudes, état de mer inclus
 
         #define BATO_GRAVITY 9.81
 
         // Miroir exact de WaveField.Displacement() / SampleNormal().
-        void BatoGerstner(float2 gridPosition, out float3 displacement, out float3 normalWS, out float crest)
+        void BatoGerstner(float2 gridPosition, out float3 displacement, out float3 normalWS, out float pinch)
         {
             displacement = float3(0, 0, 0);
             float nx = 0, ny = 0, nz = 0;
 
             int count = _BatoWaveCount;
+            float totalAmplitude = max(0.01, _BatoWaveHeight);
 
             [loop]
             for (int i = 0; i < count; i++)
@@ -84,7 +111,9 @@ Shader "Bato/Ocean"
                 float k     = 2.0 * PI / wavelength;
                 float speed = sqrt(BATO_GRAVITY / k) * speedMul;
                 float phase = k * (dot(direction, gridPosition) - speed * _BatoWaveTime);
-                float q     = steepness / (k * amplitude * count);
+
+                // Budget de pincement au prorata de l'amplitude — voir WaveField.Displacement().
+                float q     = steepness / (k * totalAmplitude);
 
                 float c = cos(phase);
                 float s = sin(phase);
@@ -101,16 +130,28 @@ Shader "Bato/Ocean"
 
             normalWS = normalize(float3(nx, 1.0 - ny, nz));
 
-            // ny est le facteur de pincement de la surface : maximal exactement là où la crête
-            // se resserre, c'est-à-dire là où l'écume apparaît vraiment.
-            crest = ny;
+            // ny mesure la compression horizontale de la surface : il vaut 0 au repos et tend
+            // vers 1 quand la crête est sur le point de se replier. C'est exactement le critère
+            // physique de déferlement, donc le bon pilote pour l'écume — et il est nul partout
+            // ailleurs que sur une crête, ce qu'un bruit ne peut pas garantir.
+            pinch = ny;
         }
+
         ENDHLSL
 
         Pass
         {
             Name "ForwardLit"
             Tags { "LightMode" = "UniversalForward" }
+
+            // Découpe par les volumes de coque (voir WaterMask.shader) : on ne dessine pas
+            // d'eau là où un masque a posé un 1 dans le stencil.
+            Stencil
+            {
+                Ref 1
+                Comp NotEqual
+                Pass Keep
+            }
 
             HLSLPROGRAM
             #pragma vertex Vertex
@@ -143,14 +184,14 @@ Shader "Bato/Ocean"
 
                 float3 displacement;
                 float3 normalWS;
-                float  crest;
-                BatoGerstner(positionWS.xz, displacement, normalWS, crest);
+                float  pinch;
+                BatoGerstner(positionWS.xz, displacement, normalWS, pinch);
 
                 positionWS += displacement;
 
                 OUT.positionWS = positionWS;
                 OUT.normalWS   = normalWS;
-                OUT.waveData   = float2(displacement.y, crest);
+                OUT.waveData   = float2(displacement.y, pinch);
                 OUT.positionCS = TransformWorldToHClip(positionWS);
                 OUT.fogFactor  = ComputeFogFactor(OUT.positionCS.z);
 
@@ -162,28 +203,43 @@ Shader "Bato/Ocean"
                 float3 normalWS = normalize(IN.normalWS);
                 half3  viewDir  = GetWorldSpaceNormalizeViewDir(IN.positionWS);
 
-                // Creux sombres, crêtes claires.
-                float heightBlend = saturate(IN.waveData.x * 0.5 + 0.5);
-                half3 baseColor = lerp(_DeepColor.rgb, _ShallowColor.rgb, heightBlend);
+                // Hauteur normalisée par la hauteur réelle de la mer : les couleurs restent en
+                // place quand on change l'amplitude des vagues. -1 dans les creux, +1 aux crêtes.
+                half height = IN.waveData.x / _BatoWaveHeight;
+                half pinch  = saturate(IN.waveData.y);
 
                 Light mainLight = GetMainLight();
                 half ndotl = saturate(dot(normalWS, mainLight.direction));
+
+                // 1. Dégradé de profondeur. Tout le contraste de la mer vient de là.
+                half3 color = lerp(_DeepColor.rgb, _ShallowColor.rgb, saturate(height * 0.5 + 0.5));
+
+                // 2. Diffus lissé, avec un plancher ambiant élevé : l'eau ne devient jamais noire.
                 half3 lighting = mainLight.color * (_AmbientBoost + (1.0 - _AmbientBoost) * ndotl);
+                color *= lighting;
 
-                half3 color = baseColor * lighting;
+                // 3. Contre-jour. Une crête est mince, donc la lumière la traverse : c'est le vert
+                //    lumineux qu'on voit dans SoT quand une vague passe entre le soleil et la
+                //    caméra. Conditionné à la hauteur, pour que ça ne bave pas dans les creux.
+                half backLight = saturate(dot(viewDir, -mainLight.direction));
+                half thinness  = saturate(height * 1.4 - 0.15);
+                half subsurface = pow(backLight, _SubsurfacePower) * thinness;
+                color += _SubsurfaceColor.rgb * mainLight.color * (subsurface * _SubsurfaceStrength);
 
-                // Spéculaire type Blinn-Phong : c'est lui qui fait scintiller la mer.
+                // 4. Fresnel : la mer vire vers la couleur d'horizon quand on la regarde de loin.
+                half fresnel = pow(1.0 - saturate(dot(normalWS, viewDir)), _FresnelPower);
+                color = lerp(color, _HorizonColor.rgb, saturate(fresnel * _FresnelStrength));
+
+                // 5. Éclat du soleil sur l'eau.
                 half3 halfVector = normalize(mainLight.direction + viewDir);
-                half specular = pow(saturate(dot(normalWS, halfVector)), _Smoothness * 128.0);
+                half specular = pow(saturate(dot(normalWS, halfVector)), _Smoothness * 250.0);
                 color += mainLight.color * (specular * _SpecularStrength);
 
-                // Fresnel : la mer s'éclaircit en regardant au loin.
-                half fresnel = pow(1.0 - saturate(dot(normalWS, viewDir)), _FresnelPower);
-                color = lerp(color, _ShallowColor.rgb, fresnel * _FresnelStrength);
-
-                // Écume sur les crêtes pincées.
-                half foam = smoothstep(_FoamThreshold, _FoamThreshold + _FoamSoftness, IN.waveData.y);
-                color = lerp(color, _FoamColor.rgb, foam);
+                // 6. Écume, seulement là où la vague se pince assez pour déferler. Aucun bruit :
+                //    la répartition vient de la géométrie, donc elle suit les crêtes au lieu de
+                //    tacheter la surface. _FoamStrength à 0 la retire complètement.
+                half foam = smoothstep(_FoamThreshold, 1.0, pinch);
+                color = lerp(color, _FoamColor.rgb * lighting, foam * _FoamStrength);
 
                 color = MixFog(color, IN.fogFactor);
                 return half4(color, 1.0);
@@ -224,8 +280,8 @@ Shader "Bato/Ocean"
 
                 float3 displacement;
                 float3 normalWS;
-                float  crest;
-                BatoGerstner(positionWS.xz, displacement, normalWS, crest);
+                float  pinch;
+                BatoGerstner(positionWS.xz, displacement, normalWS, pinch);
 
                 OUT.positionCS = TransformWorldToHClip(positionWS + displacement);
                 return OUT;
