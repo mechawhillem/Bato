@@ -69,7 +69,7 @@ namespace Bato
             }
 
             m_Camera.SetTarget(authority.transform, authority.GetComponent<Rigidbody>());
-            AlignControlScheme(authority.GetComponent<PlayerInput>());
+            if (!AlignControlScheme(authority.GetComponent<PlayerInput>())) return;
 
             m_BoundPlayer = playerObject;
         }
@@ -90,9 +90,10 @@ namespace Bato
         /// reste muet. InputDeviceModeToggle fait déjà ce travail, mais sa liste ne peut pas
         /// référencer un bateau qui n'existe qu'au runtime — on complète ici.
         /// </summary>
-        void AlignControlScheme(PlayerInput boatInput)
+        bool AlignControlScheme(PlayerInput boatInput)
         {
-            if (boatInput == null || m_InputMode == null) return;
+            if (boatInput == null || m_InputMode == null) return true;
+            if (!boatInput.isActiveAndEnabled || !boatInput.user.valid) return false;
 
             boatInput.neverAutoSwitchControlSchemes = true;
 
@@ -101,7 +102,7 @@ namespace Bato
                 if (Gamepad.current == null)
                 {
                     Debug.LogWarning("[Bato] Mode manette demandé mais aucune manette détectée : le bateau ne répondra pas.", this);
-                    return;
+                    return false;
                 }
                 boatInput.SwitchCurrentControlScheme("Gamepad", Gamepad.current);
             }
@@ -110,10 +111,12 @@ namespace Bato
                 if (Keyboard.current == null || Mouse.current == null)
                 {
                     Debug.LogWarning("[Bato] Clavier ou souris absent : le bateau ne répondra pas.", this);
-                    return;
+                    return false;
                 }
                 boatInput.SwitchCurrentControlScheme("Keyboard&Mouse", Keyboard.current, Mouse.current);
             }
+
+            return true;
         }
     }
 }
