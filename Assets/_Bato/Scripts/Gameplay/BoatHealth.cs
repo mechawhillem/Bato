@@ -84,10 +84,19 @@ namespace Bato
         {
             if (!IsServer || !m_IsAlive.Value || amount <= 0) return false;
 
+            var loadout = GetComponent<BoatLoadout>();
+            if (loadout != null && loadout.IsShielded) return false;
+
             m_Health.Value = Mathf.Max(0, m_Health.Value - amount);
             if (m_Health.Value > 0) return false;
 
             m_IsAlive.Value = false;
+
+            var status = GetComponent<BoatStatusEffects>();
+            status?.ClearAll();
+            loadout?.ClearItem();
+            loadout?.ClearShield();
+
             ArenaBootstrap.Instance?.ReportKill(attackerClientId, OwnerClientId);
             StartCoroutine(RespawnAfterDelay());
             return true;

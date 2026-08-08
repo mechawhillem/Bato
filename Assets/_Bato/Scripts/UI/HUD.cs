@@ -21,9 +21,15 @@ namespace Bato
 
         BoatHealth m_LocalHealth;
         BoatCannon m_LocalCannon;
+        BoatLoadout m_LocalLoadout;
         readonly StringBuilder m_Builder = new StringBuilder();
+        Text m_ItemLabel;
 
-        void Awake() => EnsurePowerGauge();
+        void Awake()
+        {
+            EnsurePowerGauge();
+            EnsureItemLabel();
+        }
 
         void Update()
         {
@@ -36,6 +42,7 @@ namespace Bato
 
             RefreshHealth(nm);
             RefreshPower(nm);
+            RefreshItem(nm);
             RefreshScoreboard();
             RefreshJoinCode();
         }
@@ -72,6 +79,57 @@ namespace Bato
 
             if (m_PowerFill) m_PowerFill.fillAmount = power;
             if (m_PowerLabel) m_PowerLabel.text = charging ? $"PUISSANCE  {Mathf.RoundToInt(power * 100f)}%" : string.Empty;
+        }
+
+        void RefreshItem(NetworkManager nm)
+        {
+            if (m_LocalLoadout == null)
+            {
+                var playerObject = nm.LocalClient?.PlayerObject;
+                if (playerObject != null) m_LocalLoadout = playerObject.GetComponent<BoatLoadout>();
+            }
+
+            if (m_ItemLabel == null) return;
+
+            if (m_LocalLoadout == null)
+            {
+                m_ItemLabel.text = string.Empty;
+                return;
+            }
+
+            if (m_LocalLoadout.IsShielded)
+            {
+                m_ItemLabel.text = $"BOUCLIER  {m_LocalLoadout.ShieldRemaining:0.0}s";
+                return;
+            }
+
+            if (m_LocalLoadout.HasItem)
+            {
+                m_ItemLabel.text = $"{PickupItemNames.Get(m_LocalLoadout.HeldItem)}  [F]";
+                return;
+            }
+
+            m_ItemLabel.text = string.Empty;
+        }
+
+        void EnsureItemLabel()
+        {
+            if (m_ItemLabel != null || m_Root == null) return;
+
+            var go = new GameObject("ItemLabel", typeof(RectTransform));
+            go.transform.SetParent(m_Root.transform, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = new Vector2(1f, 0f);
+            rect.sizeDelta = new Vector2(320f, 48f);
+            rect.anchoredPosition = new Vector2(-180f, 80f);
+
+            m_ItemLabel = go.AddComponent<Text>();
+            m_ItemLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (m_ItemLabel.font == null) m_ItemLabel.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            m_ItemLabel.fontSize = 22;
+            m_ItemLabel.alignment = TextAnchor.MiddleRight;
+            m_ItemLabel.color = new Color(1f, 0.92f, 0.35f);
+            m_ItemLabel.raycastTarget = false;
         }
 
         void RefreshScoreboard()

@@ -50,19 +50,37 @@ namespace Features.Camera
         public BoatCameraState CurrentState => _stateMachine.State;
         public BoatCameraLockMode CurrentLockMode => _stateMachine.LockMode;
 
-        public void SetTarget(Transform target, Rigidbody targetRigidbody)
+        public void SetTarget(Transform target, Rigidbody targetRigidbody, bool snapBehind = false)
         {
             _target = target;
             _targetRigidbody = targetRigidbody != null ? targetRigidbody : target != null ? target.GetComponent<Rigidbody>() : null;
 
+            if (_target == null) return;
+
+            Vector3 heading = Vector3.ProjectOnPlane(_target.forward, Vector3.up);
             if (_targetRigidbody != null)
             {
                 Vector3 planarVelocity = Vector3.ProjectOnPlane(_targetRigidbody.linearVelocity, Vector3.up);
                 if (planarVelocity.sqrMagnitude >= _minimumVelocity * _minimumVelocity)
-                {
-                    _lastValidVelocityDirection = planarVelocity.normalized;
-                }
+                    heading = planarVelocity;
             }
+
+            if (heading.sqrMagnitude > 0.0001f)
+                _lastValidVelocityDirection = heading.normalized;
+
+            if (!snapBehind) return;
+
+            Vector3 lookTarget = _target.position + _target.forward * _lookAhead + Vector3.up * _lookHeight;
+            _currentDesiredPosition = _target.position
+                - _lastValidVelocityDirection * _distance
+                + Vector3.up * _height;
+            Vector3 toLook = lookTarget - _currentDesiredPosition;
+            _currentDesiredRotation = toLook.sqrMagnitude > 0.0001f
+                ? Quaternion.LookRotation(toLook.normalized, Vector3.up)
+                : transform.rotation;
+            transform.SetPositionAndRotation(_currentDesiredPosition, _currentDesiredRotation);
+            _yawOffset = 0f;
+            _pitchOffset = 0f;
         }
 
 

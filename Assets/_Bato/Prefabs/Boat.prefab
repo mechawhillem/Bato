@@ -29,8 +29,8 @@ Transform:
   m_GameObject: {fileID: 1005760561589838522}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0, y: 0.4906, z: -0.0937}
-  m_LocalScale: {x: 1.4406, y: 0.3475706, z: 2.5817974}
+  m_LocalPosition: {x: -0, y: 0.392, z: -0.075}
+  m_LocalScale: {x: 1.152, y: 0.278, z: 2.065}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 5336305564515380027}
@@ -223,8 +223,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1.6, y: 1.2, z: 2.9384239}
-  m_Center: {x: 0, y: 0.25, z: -0.046946168}
+  m_Size: {x: 1.28, y: 0.96, z: 2.35}
+  m_Center: {x: 0, y: 0.2, z: -0.037}
 --- !u!54 &7343461524725862688
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -233,10 +233,10 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3825198234923154726}
   serializedVersion: 5
-  m_Mass: 10
+  m_Mass: 5
   m_LinearDamping: 0
   m_AngularDamping: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_CenterOfMass: {x: 0, y: -0.25, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
@@ -245,7 +245,7 @@ Rigidbody:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_ImplicitCom: 1
+  m_ImplicitCom: 0
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
@@ -379,20 +379,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Features.Player.BoatMovementController
   _inputSource: {fileID: 2715936143152988639}
-  _buoyancy: {fileID: 0}
-  _forwardAcceleration: 30
-  _reverseAcceleration: 20
-  _maxForwardSpeed: 30
-  _maxReverseSpeed: 20
-  _linearDamping: 1.5
-  _steeringTorque: 8
-  _angularDamping: 3
-  _jumpImpulse: 8
-  _jumpHoldAcceleration: 15
-  _maxJumpHoldTime: 0.35
-  _jumpReleaseMultiplier: 0.35
-  _airControl: 0.35
-  _jumpCooldown: 0.4
+  _buoyancy: {fileID: 1756982201260541780}
+  _forwardAcceleration: 38
+  _reverseAcceleration: 24
+  _maxForwardSpeed: 18
+  _maxReverseSpeed: 10
+  _linearDamping: 0.7
+  _steeringTorque: 52
+  _angularDamping: 6
+  _minSteerFactor: 1
+  _jumpImpulse: 14
+  _airControl: 0.85
+  _jumpCooldown: 0.2
+  _ascentGravityMultiplier: 1.35
+  _fallGravityMultiplier: 3.8
+  _airLinearDamping: 0.02
 --- !u!114 &1756982201260541780
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -407,13 +408,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Bato.Water.BoatBuoyancy
   m_HullCollider: {fileID: 5870961874725682492}
   m_ProbeInset: 0.85
-  m_ProbeDepth: 1.5
+  m_ProbeDepth: 1
   m_BuoyancyStrength: 5
-  m_DampingRatio: 0.7
+  m_DampingRatio: 0.85
   m_WaterlineOffset: 0
-  m_AngularDrag: 2.5
-  m_UprightTorque: 6
-  m_WaveAlignment: 0.35
+  m_AngularDrag: 4
+  m_UprightTorque: 28
+  m_WaveAlignment: 0.15
+  m_AirStabilisation: 0.7
 --- !u!114 &4001256749224011590
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -464,13 +466,13 @@ MonoBehaviour:
   m_CannonballPrefab: {fileID: 5878007302481284183, guid: d592856f8a096934aa8993c250a3dbd3, type: 3}
   m_MuzzleLeft: {fileID: 8740705499837937348}
   m_MuzzleRight: {fileID: 1138336543782419109}
-  m_Cooldown: 0.8
-  m_MinMuzzleSpeed: 24
-  m_MaxMuzzleSpeed: 38
-  m_MinElevation: 3
-  m_MaxElevation: 38
-  m_ChargeDuration: 2.5
-  m_ArcEase: 1.75
+  m_Cooldown: 0.55
+  m_MinMuzzleSpeed: 42
+  m_MaxMuzzleSpeed: 68
+  m_MinElevation: 2
+  m_MaxElevation: 18
+  m_ChargeDuration: 0.7
+  m_ArcEase: 1.15
 --- !u!114 &150898659319159763
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -515,7 +517,7 @@ Transform:
   m_GameObject: {fileID: 6167578840091273763}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 1, y: 0.55, z: 0.2}
+  m_LocalPosition: {x: 0.8, y: 0.44, z: 0.16}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -546,7 +548,7 @@ Transform:
   m_GameObject: {fileID: 9161967504863539908}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -1, y: 0.55, z: 0.2}
+  m_LocalPosition: {x: -0.8, y: 0.44, z: 0.16}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -560,6 +562,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1660501911274231193}
     m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: d9386fb749d30c6439c219ea2c8f5978, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d9386fb749d30c6439c219ea2c8f5978, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: d9386fb749d30c6439c219ea2c8f5978, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.8
+      objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: d9386fb749d30c6439c219ea2c8f5978, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

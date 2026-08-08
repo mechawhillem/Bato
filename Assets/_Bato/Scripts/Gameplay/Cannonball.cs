@@ -19,6 +19,7 @@ namespace Bato
         ulong m_ShooterClientId;
         float m_DespawnTime;
         bool m_Consumed;
+        CannonballEffect m_Effect = CannonballEffect.None;
 
         void Awake() => m_Rigidbody = GetComponent<Rigidbody>();
 
@@ -30,10 +31,11 @@ namespace Bato
         }
 
         /// <summary>Serveur uniquement, appelé juste après Spawn().</summary>
-        public void Launch(Vector3 velocity, ulong shooterClientId)
+        public void Launch(Vector3 velocity, ulong shooterClientId, CannonballEffect effect = CannonballEffect.None)
         {
             if (!IsServer) return;
             m_ShooterClientId = shooterClientId;
+            m_Effect = effect;
             m_Rigidbody.linearVelocity = velocity;
         }
 
@@ -67,7 +69,21 @@ namespace Bato
                 if (health.OwnerClientId == m_ShooterClientId) return;
                 if (!health.IsAlive) return;
 
+                bool shielded = false;
+                var loadout = health.GetComponent<BoatLoadout>();
+                if (loadout != null) shielded = loadout.IsShielded;
+
                 health.ApplyDamage(m_Damage, m_ShooterClientId);
+
+                if (!shielded && health.IsAlive)
+                {
+                    var status = health.GetComponent<BoatStatusEffects>();
+                    if (status != null)
+                    {
+                        if (m_Effect == CannonballEffect.Burn) status.ApplyBurn(m_ShooterClientId);
+                        else if (m_Effect == CannonballEffect.Slow) status.ApplySlow();
+                    }
+                }
             }
 
             Consume(transform.position);

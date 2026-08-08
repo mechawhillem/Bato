@@ -19,23 +19,24 @@ namespace Bato
         [SerializeField] Transform m_MuzzleLeft;
         [Tooltip("Canon tribord / droit — touche P (Attack).")]
         [SerializeField] Transform m_MuzzleRight;
-        [SerializeField] float m_Cooldown = 0.8f;
+        [SerializeField] float m_Cooldown = 0.55f;
         [Tooltip("Vitesse du tir tap (presque droit).")]
-        [SerializeField] float m_MinMuzzleSpeed = 24f;
+        [SerializeField] float m_MinMuzzleSpeed = 42f;
         [Tooltip("Vitesse à charge max.")]
-        [SerializeField] float m_MaxMuzzleSpeed = 38f;
+        [SerializeField] float m_MaxMuzzleSpeed = 68f;
         [Tooltip("Angle vers le haut au tap — quasi droit (petite courbe).")]
-        [SerializeField] float m_MinElevation = 3f;
+        [SerializeField] float m_MinElevation = 2f;
         [Tooltip("Angle vers le haut à charge max.")]
-        [SerializeField] float m_MaxElevation = 38f;
+        [SerializeField] float m_MaxElevation = 18f;
         [Tooltip("Temps pour atteindre la puissance max en maintenant la touche.")]
-        [SerializeField] float m_ChargeDuration = 2.5f;
+        [SerializeField] float m_ChargeDuration = 0.7f;
         [Tooltip(">1 = la courbe grossit lentement au début, plus vite ensuite.")]
-        [SerializeField] float m_ArcEase = 1.75f;
+        [SerializeField] float m_ArcEase = 1.15f;
 
         BoatNetworkAuthority m_Authority;
         BoatHealth m_Health;
         CannonAimPreview m_AimPreview;
+        Rigidbody m_Rigidbody;
         float m_LocalNextFireLeft;
         float m_LocalNextFireRight;
         float m_ServerNextFireLeft;
@@ -50,6 +51,7 @@ namespace Bato
         {
             m_Authority = GetComponent<BoatNetworkAuthority>();
             m_Health = GetComponent<BoatHealth>();
+            m_Rigidbody = GetComponent<Rigidbody>();
             m_AimPreview = GetComponent<CannonAimPreview>();
             if (m_AimPreview == null) m_AimPreview = gameObject.AddComponent<CannonAimPreview>();
         }
@@ -107,15 +109,22 @@ namespace Bato
                 return;
             }
 
-            Vector3 velocity = GetLaunchVelocity(muzzle, power);
+            Vector3 velocity = GetLaunchVelocity(muzzle, power, GetBoatVelocity());
             Vector3 origin = muzzle.position + velocity.normalized * k_MuzzleOffset;
             m_AimPreview.Show(origin, velocity);
         }
 
+        Vector3 GetBoatVelocity()
+        {
+            if (m_Rigidbody == null) m_Rigidbody = GetComponent<Rigidbody>();
+            return m_Rigidbody != null ? m_Rigidbody.linearVelocity : Vector3.zero;
+        }
+
         /// <summary>
         /// Tap (power 0) ≈ tir droit. Plus on charge, plus l'angle monte — lentement au début.
+        /// La vitesse du bateau est ajoutée pour que le boulet suive le mouvement.
         /// </summary>
-        Vector3 GetLaunchVelocity(Transform muzzle, float power)
+        Vector3 GetLaunchVelocity(Transform muzzle, float power, Vector3 boatVelocity)
         {
             power = Mathf.Clamp01(power);
 
@@ -132,7 +141,7 @@ namespace Bato
             Vector3 direction = (flat * Mathf.Cos(elevationRad) + Vector3.up * Mathf.Sin(elevationRad)).normalized;
 
             float speed = Mathf.Lerp(m_MinMuzzleSpeed, m_MaxMuzzleSpeed, power);
-            return direction * speed;
+            return direction * speed + boatVelocity;
         }
 
         void UpdateSide(InputAction action, byte side, ref float chargeStart, ref float nextLocal)
@@ -149,7 +158,7 @@ namespace Bato
                 float power = GetChargeProgress(chargeStart);
                 chargeStart = -1f;
                 nextLocal = Time.time + m_Cooldown;
-                FireRpc(side, power);
+                FireRpc(side, power, GetBoatVelocity());
                 return;
             }
 
@@ -166,7 +175,7 @@ namespace Bato
         static void CancelCharge(ref float chargeStart) => chargeStart = -1f;
 
         [Rpc(SendTo.Server)]
-        void FireRpc(byte side, float power)
+        void FireRpc(byte side, float power, Vector3 boatVelocity)
         {
             if (m_Health != null && !m_Health.IsAlive) return;
 
@@ -196,14 +205,42 @@ namespace Bato
                 return;
             }
 
-            var velocity = GetLaunchVelocity(muzzle, power);
-            var direction = velocity.normalized;
+            var velocity = GetLaunchVelocity(muzzle, power, boatVelocity);
+            var direction = velocity.sqrMagnitude > 0.001f ? velocity.normalized : muzzle.forward;
             var ball = Instantiate(
                 m_CannonballPrefab,
                 muzzle.position + direction * k_MuzzleOffset,
                 Quaternion.LookRotation(direction));
             ball.GetComponent<NetworkObject>().Spawn();
             ball.GetComponent<Cannonball>().Launch(velocity, OwnerClientId);
+        }
+
+        /// <summary>Serveur : tire un boulet spécial (feu / chaîne) depuis le museau droit, ou gauche à défaut.</summary>
+        public void ServerFireSpecial(CannonballEffect effect, float speed, Vector3 boatVelocity)
+        {
+            if (!IsServer) return;
+            if (m_Health != null && !m_Health.IsAlive) return;
+            if (m_CannonballPrefab == null) return;
+
+            var muzzle = m_MuzzleRight != null ? m_MuzzleRight : m_MuzzleLeft;
+            if (muzzle == null) muzzle = transform;
+
+            Vector3 flat = muzzle.forward;
+            flat.y = 0f;
+            if (flat.sqrMagnitude < 0.001f) flat = transform.forward;
+            flat.y = 0f;
+            flat.Normalize();
+
+            float elevationRad = m_MinElevation * Mathf.Deg2Rad;
+            Vector3 direction = (flat * Mathf.Cos(elevationRad) + Vector3.up * Mathf.Sin(elevationRad)).normalized;
+            Vector3 velocity = direction * speed + boatVelocity;
+
+            var ball = Instantiate(
+                m_CannonballPrefab,
+                muzzle.position + direction * k_MuzzleOffset,
+                Quaternion.LookRotation(direction));
+            ball.GetComponent<NetworkObject>().Spawn();
+            ball.GetComponent<Cannonball>().Launch(velocity, OwnerClientId, effect);
         }
     }
 }
