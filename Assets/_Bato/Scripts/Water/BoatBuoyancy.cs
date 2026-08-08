@@ -71,6 +71,7 @@ namespace Bato.Water
         float m_EquilibriumSubmersion;
         float m_VerticalDampingCoefficient;
         float m_DampingGraceUntil;
+        float m_FlipGraceUntil;
         bool m_WarnedAboutMissingWater;
 
         /// <summary>Vrai si au moins une sonde touche l'eau.</summary>
@@ -78,6 +79,15 @@ namespace Bato.Water
 
         /// <summary>Part de la coque dans l'eau, 0 à 1. Utilisé par les effets d'écume.</summary>
         public float SubmergedRatio { get; private set; }
+
+        public void NotifyJump() => m_DampingGraceUntil = Time.time + m_JumpDampingGrace;
+
+        /// <summary>Suspend le redressement le temps d'un dodge / flip.</summary>
+        public void NotifyFlip(float duration)
+        {
+            m_FlipGraceUntil = Time.time + Mathf.Max(0f, duration);
+            m_DampingGraceUntil = Mathf.Max(m_DampingGraceUntil, m_FlipGraceUntil);
+        }
 
         void Awake()
         {
@@ -112,8 +122,6 @@ namespace Bato.Water
         /// Prévient la flottaison qu'un saut vient de partir, pour qu'elle relâche sa traînée
         /// verticale le temps que la coque sorte de l'eau. Appelé par le pilotage.
         /// </summary>
-        public void NotifyJump() => m_DampingGraceUntil = Time.time + m_JumpDampingGrace;
-
         void OnValidate()
         {
             if (!Application.isPlaying) return;
@@ -233,6 +241,8 @@ namespace Bato.Water
             // On continue de stabiliser hors de l'eau, sinon un saut laisse le bateau tourner
             // librement et il retombe sur le flanc — d'où il ne se relève plus.
             float stabilisation = IsInWater ? SubmergedRatio : m_AirStabilisation;
+            if (Time.time < m_FlipGraceUntil)
+                stabilisation *= 0.05f;
             if (stabilisation <= 0f) return;
 
             ApplyAngularDamping(stabilisation);
