@@ -83,6 +83,7 @@ GameObject:
   - component: {fileID: 2675132634545105627}
   - component: {fileID: 4246043165514568755}
   - component: {fileID: 1335377777335137756}
+  - component: {fileID: 1115730480710550145}
   m_Layer: 0
   m_Name: Boat 1
   m_TagString: Untagged
@@ -378,6 +379,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c59c52ddee9a0b47823e36e105722cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bato.Water.BoatWake
+  m_CustomSystem: {fileID: 0}
+  m_OverrideSizeAndColor: 1
+  m_OverrideVelocity: 1
+  m_EmitPoints: []
   m_HullCollider: {fileID: 0}
   m_MinSpeed: 1.2
   m_FullSpeed: 7
@@ -406,6 +411,20 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.07, y: 1.4, z: 5.89}
   m_Center: {x: 0, y: 0.45, z: 0}
+--- !u!114 &1115730480710550145
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3825198234923154726}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f5b805200115c649a17b883ebfe5094, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Bato.BoatCustomizationNetwork
+  ShowTopMostFoldoutHeaderGroup: 1
+  m_VisualRoot: {fileID: 1660501911274231193}
 --- !u!1001 &773072048451995913
 PrefabInstance:
   m_ObjectHideFlags: 0

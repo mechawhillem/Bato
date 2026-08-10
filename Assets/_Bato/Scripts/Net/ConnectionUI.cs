@@ -23,6 +23,11 @@ namespace Bato
                  "au hasard : le multijoueur reste utilisable sans ce champ.")]
         [SerializeField] TMP_InputField m_NameField;
 
+        [Header("Menu principal")]
+        [Tooltip("Contrôleur appelé automatiquement quand l'hébergement ou la connexion est réussi.")]
+        [SerializeField] MainMenuController m_MainMenuController;
+
+
         SessionRunner Runner => SessionRunner.Instance;
 
         void Start()
@@ -44,7 +49,7 @@ namespace Bato
             if (Runner != null)
             {
                 Runner.StatusChanged += OnStatus;
-                Runner.Started += Hide;
+                Runner.Started += OnNetworkStarted;
             }
 
             SetStatus("Héberge une partie, ou entre un code pour rejoindre.");
@@ -54,7 +59,7 @@ namespace Bato
         {
             if (Runner == null) return;
             Runner.StatusChanged -= OnStatus;
-            Runner.Started -= Hide;
+            Runner.Started -= OnNetworkStarted;
         }
 
         void Update()
@@ -66,6 +71,13 @@ namespace Bato
                 m_Panel.SetActive(true);
             }
         }
+
+        void OnNetworkStarted()
+        {
+            Hide();
+            if (m_MainMenuController != null) m_MainMenuController.PlayGame();
+        }
+
 
         void OnStatus(string message) => SetStatus(message);
 

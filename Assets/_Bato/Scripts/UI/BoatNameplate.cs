@@ -135,6 +135,13 @@ namespace Bato
         /// </summary>
         void RefreshName()
         {
+            var customization = GetComponent<BoatCustomizationNetwork>();
+            if (customization != null && !string.IsNullOrEmpty(customization.PlayerName))
+            {
+                m_Label.text = customization.PlayerName;
+                return;
+            }
+
             var arena = ArenaBootstrap.Instance;
             if (arena == null || arena.LobbyRevision == m_KnownRevision) return;
 

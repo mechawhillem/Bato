@@ -337,6 +337,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c59c52ddee9a0b47823e36e105722cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bato.Water.BoatWake
+  m_CustomSystem: {fileID: 0}
+  m_OverrideSizeAndColor: 1
+  m_OverrideVelocity: 1
+  m_EmitPoints: []
   m_HullCollider: {fileID: 5870961874725682492}
   m_MinSpeed: 1.2
   m_FullSpeed: 7
