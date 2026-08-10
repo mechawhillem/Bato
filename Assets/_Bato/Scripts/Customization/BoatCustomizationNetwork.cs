@@ -148,18 +148,44 @@ namespace Bato
 
     public static class BoatCustomizationPalette
     {
-        static readonly Color[] s_Colors =
+        static readonly Color[] s_Colors
+        =
         {
             new Color(0.92f, 0.92f, 0.92f),
             new Color(0.12f, 0.35f, 0.85f),
             new Color(0.85f, 0.12f, 0.10f),
             new Color(0.10f, 0.65f, 0.25f),
             new Color(0.95f, 0.65f, 0.08f),
-            new Color(0.55f, 0.15f, 0.70f)
+            new Color(0.55f, 0.15f, 0.70f),
+            new Color(0.05f, 0.75f, 0.78f),
+            new Color(0.95f, 0.28f, 0.55f),
+            new Color(0.95f, 0.42f, 0.08f),
+            new Color(0.35f, 0.18f, 0.08f),
+            new Color(0.12f, 0.12f, 0.16f),
+            new Color(0.48f, 0.52f, 0.58f)
+        };
+
+        static readonly string[] s_Names
+        =
+        {
+            "Blanc perle",
+            "Bleu océan",
+            "Rouge corail",
+            "Vert lagon",
+            "Jaune soleil",
+            "Violet améthyste",
+            "Cyan turquoise",
+            "Rose flamant",
+            "Orange coucher de soleil",
+            "Marron bois",
+            "Noir pirate",
+            "Gris acier"
         };
 
         public static int Count => s_Colors.Length;
-        public static Color GetFlagColor(byte index) => s_Colors[Mathf.Clamp(index, 0, s_Colors.Length - 1)];
-        public static Color GetSailColor(byte index) => s_Colors[Mathf.Clamp(index, 0, s_Colors.Length - 1)];
+        public static Color GetColor(byte index) => s_Colors[Mathf.Clamp(index, 0, s_Colors.Length - 1)];
+        public static string GetName(byte index) => s_Names[Mathf.Clamp(index, 0, s_Names.Length - 1)];
+        public static Color GetFlagColor(byte index) => GetColor(index);
+        public static Color GetSailColor(byte index) => GetColor(index);
     }
 }

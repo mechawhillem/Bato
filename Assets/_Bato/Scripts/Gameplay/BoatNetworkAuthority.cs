@@ -23,6 +23,8 @@ namespace Bato
         PlayerInputSource m_InputSource;
         BoatMovementController m_Movement;
         BoatBuoyancy m_Buoyancy;
+        BoatHealth m_Health;
+        BoatLoadout m_Loadout;
 
         /// <summary>Tir canon droit (P). Null tant que le bateau n'est pas possédé.</summary>
         public InputAction FireRightAction { get; private set; }
@@ -37,6 +39,10 @@ namespace Bato
             m_InputSource = GetComponent<PlayerInputSource>();
             m_Movement = GetComponent<BoatMovementController>();
             m_Buoyancy = GetComponent<BoatBuoyancy>();
+            m_Health = GetComponent<BoatHealth>();
+            m_Loadout = GetComponent<BoatLoadout>();
+
+            Debug.Log($"[BoatNetworkAuthority] Awake sur '{name}' | PlayerInput={(m_PlayerInput != null)} | InputSource={(m_InputSource != null)} | Movement={(m_Movement != null)} | NetworkObject={(NetworkObject != null)}", this);
 
             // Avant Spawn : les NetworkBehaviour doivent déjà être présents.
             if (GetComponent<BoatStatusEffects>() == null) gameObject.AddComponent<BoatStatusEffects>();
@@ -52,6 +58,7 @@ namespace Bato
         public override void OnNetworkSpawn()
         {
             bool owned = IsOwner;
+            Debug.Log($"[BoatNetworkAuthority] OnNetworkSpawn sur '{name}' | IsSpawned={IsSpawned} | IsOwner={IsOwner} | IsClient={IsClient} | IsServer={IsServer} | OwnerClientId={OwnerClientId} | LocalClientId={NetworkManager?.LocalClientId}", this);
 
             m_Rigidbody.isKinematic = !owned;
             SetControlEnabled(owned);
@@ -65,6 +72,7 @@ namespace Bato
             {
                 FireRightAction = m_PlayerInput.actions.FindAction("Attack", throwIfNotFound: false);
                 FireLeftAction = m_PlayerInput.actions.FindAction("AttackLeft", throwIfNotFound: false);
+                Debug.Log($"[BoatNetworkAuthority] Actions de tir | Attack={(FireRightAction != null)} | AttackLeft={(FireLeftAction != null)} | ActionMap={m_PlayerInput.currentActionMap?.name ?? "null"}", this);
             }
         }
 
@@ -74,6 +82,8 @@ namespace Bato
             if (m_PlayerInput) m_PlayerInput.enabled = value;
             if (m_InputSource) m_InputSource.enabled = value;
             if (m_Movement) m_Movement.enabled = value;
+
+            Debug.Log($"[BoatNetworkAuthority] SetControlEnabled({value}) sur '{name}' | PlayerInput={(m_PlayerInput != null ? m_PlayerInput.enabled : false)} | InputSource={(m_InputSource != null ? m_InputSource.enabled : false)} | Movement={(m_Movement != null ? m_Movement.enabled : false)} | IsOwner={IsOwner} | IsSpawned={IsSpawned}", this);
 
             if (!value && m_Rigidbody != null && !m_Rigidbody.isKinematic)
             {
@@ -92,6 +102,20 @@ namespace Bato
             {
                 m_Rigidbody.linearVelocity = Vector3.zero;
                 m_Rigidbody.angularVelocity = Vector3.zero;
+            }
+        }
+
+        private void LateUpdate()
+        {
+            if (!IsSpawned || !IsOwner) return;
+            if (m_Health != null && !m_Health.IsAlive) return;
+            if (m_Loadout != null && m_Loadout.IsControllingRemote) return;
+            if (m_PlayerInput == null || m_InputSource == null || m_Movement == null) return;
+
+            if (!m_PlayerInput.enabled || !m_InputSource.enabled || !m_Movement.enabled)
+            {
+                Debug.LogWarning($"[BoatNetworkAuthority] Contrôle local perdu sur '{name}', réactivation automatique.", this);
+                SetControlEnabled(true);
             }
         }
 

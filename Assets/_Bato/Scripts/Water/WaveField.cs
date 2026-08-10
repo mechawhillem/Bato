@@ -27,6 +27,9 @@ namespace Bato.Water
         public static WaveField Instance { get; private set; }
 
         [SerializeField] WaveSettings m_Settings;
+        [Tooltip("Objet visuel qui délimite la zone d'eau. Vide = recherche de WaterVolume.")]
+        [SerializeField] Renderer m_WaterBoundsRenderer;
+        bool m_WaterBoundsWarningShown;
 
         [Tooltip("État de mer initial imposé par le serveur au démarrage.")]
         [Range(0f, 2f)]
@@ -80,6 +83,11 @@ namespace Bato.Water
         {
             Instance = this;
             m_SeaStateLocal = m_InitialSeaState;
+            if (m_WaterBoundsRenderer == null)
+            {
+                var waterVolume = GameObject.Find("WaterVolume");
+                if (waterVolume != null) m_WaterBoundsRenderer = waterVolume.GetComponent<Renderer>();
+            }
 
             if (m_Settings == null)
             {
@@ -265,8 +273,30 @@ namespace Bato.Water
             return Displacement(SolveGridPosition(target, time), time).y;
         }
 
-        /// <summary>
-        /// Notre mer est infinie : il y a de l'eau partout. Le seul cas sans surface est un
+        /// <summary>Vrai si le point est dans les limites XZ du WaterVolume visuel.</summary>
+        public bool IsInsideWaterBounds(Vector3 worldPosition)
+        {
+            if (m_WaterBoundsRenderer == null)
+            {
+                var waterVolume = GameObject.Find("WaterVolume");
+                if (waterVolume != null) m_WaterBoundsRenderer = waterVolume.GetComponent<Renderer>();
+            }
+
+            if (m_WaterBoundsRenderer == null)
+            {
+                if (!m_WaterBoundsWarningShown)
+                {
+                    Debug.LogWarning($"[WaveField] Aucun Renderer WaterVolume trouvé pour '{name}' : zone considérée infinie.", this);
+                    m_WaterBoundsWarningShown = true;
+                }
+                return true;
+            }
+
+            Bounds bounds = m_WaterBoundsRenderer.bounds;
+            return worldPosition.x >= bounds.min.x && worldPosition.x <= bounds.max.x
+                && worldPosition.z >= bounds.min.z && worldPosition.z <= bounds.max.z;
+        }
+
         /// WaveField sans réglages, où il vaut mieux ne rien faire flotter que faire flotter sur
         /// un plan à zéro qui n'est dessiné nulle part.
         /// </summary>

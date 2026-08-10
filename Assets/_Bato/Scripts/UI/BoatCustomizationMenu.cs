@@ -14,6 +14,7 @@ namespace Bato
         [SerializeField] TMP_Dropdown m_FlagColorDropdown;
         [SerializeField] TMP_Dropdown m_SailColorDropdown;
         [SerializeField] Button m_ApplyButton;
+        [SerializeField] Button m_ResetButton;
         [SerializeField] TMP_Text m_StatusLabel;
 
         [Header("Aperçu visuel")]
@@ -37,17 +38,20 @@ namespace Bato
 
             if (m_FlagColorDropdown != null)
             {
-                m_FlagColorDropdown.value = preferences.FlagColorIndex;
+                ConfigureColorDropdown(m_FlagColorDropdown);
+                m_FlagColorDropdown.value = Mathf.Clamp(preferences.FlagColorIndex, 0, BoatCustomizationPalette.Count - 1);
                 m_FlagColorDropdown.onValueChanged.AddListener(OnFlagColorSelected);
             }
 
             if (m_SailColorDropdown != null)
             {
-                m_SailColorDropdown.value = preferences.SailColorIndex;
+                ConfigureColorDropdown(m_SailColorDropdown);
+                m_SailColorDropdown.value = Mathf.Clamp(preferences.SailColorIndex, 0, BoatCustomizationPalette.Count - 1);
                 m_SailColorDropdown.onValueChanged.AddListener(OnSailColorSelected);
             }
 
             if (m_ApplyButton != null) m_ApplyButton.onClick.AddListener(Apply);
+            if (m_ResetButton != null) m_ResetButton.onClick.AddListener(Reset);
 
             ApplyPreview(preferences.FlagColorIndex, preferences.SailColorIndex);
         }
@@ -57,6 +61,7 @@ namespace Bato
             if (m_FlagColorDropdown != null) m_FlagColorDropdown.onValueChanged.RemoveListener(OnFlagColorSelected);
             if (m_SailColorDropdown != null) m_SailColorDropdown.onValueChanged.RemoveListener(OnSailColorSelected);
             if (m_ApplyButton != null) m_ApplyButton.onClick.RemoveListener(Apply);
+            if (m_ResetButton != null) m_ResetButton.onClick.RemoveListener(Reset);
         }
 
         public void TogglePanel()
@@ -73,6 +78,19 @@ namespace Bato
             ApplyPreview(flagIndex, sailIndex);
         }
 
+        /// <summary>Réinitialise les couleurs et conserve le pseudo actuel.</summary>
+        public void Reset()
+        {
+            const byte defaultColorIndex = 0;
+            var currentName = PlayerIdentity.Name;
+
+            if (m_PlayerNameField != null) m_PlayerNameField.text = currentName;
+            if (m_FlagColorDropdown != null) m_FlagColorDropdown.SetValueWithoutNotify(defaultColorIndex);
+            if (m_SailColorDropdown != null) m_SailColorDropdown.SetValueWithoutNotify(defaultColorIndex);
+
+            Apply();
+            SetStatus("Personnalisation réinitialisée.");
+        }
         public void Apply()
         {
             var selection = BoatCustomizationPreferences.Load();
@@ -112,6 +130,21 @@ namespace Bato
             RefreshPreview();
         }
 
+        void ConfigureColorDropdown(TMP_Dropdown dropdown)
+        {
+            dropdown.ClearOptions();
+            var options = new System.Collections.Generic.List<TMP_Dropdown.OptionData>(BoatCustomizationPalette.Count);
+
+            for (byte index = 0; index < BoatCustomizationPalette.Count; index++)
+            {
+                var color = BoatCustomizationPalette.GetColor(index);
+                var hex = ColorUtility.ToHtmlStringRGB(color);
+                var label = $"<color=#{hex}>■</color> {BoatCustomizationPalette.GetName(index)}";
+                options.Add(new TMP_Dropdown.OptionData(label));
+            }
+
+            dropdown.AddOptions(options);
+        }
         void CachePreviewRenderers()
         {
             if (m_VisualRoot == null) return;

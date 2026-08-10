@@ -217,6 +217,8 @@ namespace Bato.Water
             foreach (var offset in m_Probes)
             {
                 var probeWorld = transform.TransformPoint(offset);
+                if (WaterSurface.Active is BitgemWaterSurface bitgemSurface && !bitgemSurface.IsInsideVolume(probeWorld)) continue;
+                if (WaterSurface.Active is WaveField waveField && !waveField.IsInsideWaterBounds(probeWorld)) continue;
                 if (!WaterSurface.TrySampleHeight(probeWorld, out float waterHeight)) continue;
 
                 float depth = waterHeight - probeWorld.y;

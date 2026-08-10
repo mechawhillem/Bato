@@ -160,14 +160,28 @@ namespace Bato
 
         void UpdateSide(InputAction action, byte side, ref float chargeStart, ref float nextLocal)
         {
-            if (action == null) return;
+            bool keyboardPressed = side == k_Left
+                ? Keyboard.current != null && Keyboard.current.oKey.wasPressedThisFrame
+                : Keyboard.current != null && Keyboard.current.pKey.wasPressedThisFrame;
+            bool keyboardReleased = side == k_Left
+                ? Keyboard.current != null && Keyboard.current.oKey.wasReleasedThisFrame
+                : Keyboard.current != null && Keyboard.current.pKey.wasReleasedThisFrame;
+            bool keyboardHeld = side == k_Left
+                ? Keyboard.current != null && Keyboard.current.oKey.isPressed
+                : Keyboard.current != null && Keyboard.current.pKey.isPressed;
 
-            if (action.WasPressedThisFrame() && Time.time >= nextLocal)
+            if (action == null && !keyboardPressed && !keyboardHeld) return;
+
+            bool pressed = keyboardPressed || action != null && action.WasPressedThisFrame();
+            bool released = keyboardReleased || action != null && action.WasReleasedThisFrame();
+            bool held = keyboardHeld || action != null && action.IsPressed();
+
+            if (pressed && Time.time >= nextLocal)
                 chargeStart = Time.time;
 
             if (chargeStart < 0f) return;
 
-            if (action.WasReleasedThisFrame())
+            if (released)
             {
                 float power = GetChargeProgress(chargeStart);
                 chargeStart = -1f;
@@ -176,7 +190,7 @@ namespace Bato
                 return;
             }
 
-            if (!action.IsPressed())
+            if (!held)
                 chargeStart = -1f;
         }
 

@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 577930709
+  GlobalObjectIdHash: 2526674473
   InScenePlacedSourceGlobalObjectIdHash: 577930709
   DeferredDespawnTick: 0
   Ownership: 1
@@ -321,6 +321,8 @@ MonoBehaviour:
   - {fileID: 0}
   m_CollidersToDisableOnDeath:
   - {fileID: 0}
+  m_OutOfWaterGracePeriod: 5
+  m_OutOfWaterDeathHeight: -10
 --- !u!114 &1368139683260005106
 MonoBehaviour:
   m_ObjectHideFlags: 0

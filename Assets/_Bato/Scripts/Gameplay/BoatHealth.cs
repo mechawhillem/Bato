@@ -1,4 +1,6 @@
 using System.Collections;
+using Bato.Water;
+using Bitgem.VFX.StylisedWater;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -18,12 +20,18 @@ namespace Bato
         [SerializeField] float m_RespawnDelay = 3f;
         [SerializeField] GameObject[] m_VisualsToHideOnDeath;
         [SerializeField] Collider[] m_CollidersToDisableOnDeath;
+        [SerializeField, Min(0.1f)] float m_OutOfWaterGracePeriod = 0.8f;
+        [SerializeField, Min(0f)] float m_OutOfWaterDeathHeight = -10f;
 
         readonly NetworkVariable<int> m_Health = new NetworkVariable<int>(
             100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
         readonly NetworkVariable<bool> m_IsAlive = new NetworkVariable<bool>(
             true, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+        float m_OutOfWaterSince = -1f;
+        bool m_OutOfWaterDeathTriggered;
+        float m_NextOutOfWaterLogTime;
 
         public int Health => m_Health.Value;
         public int MaxHealth => m_MaxHealth;
@@ -43,8 +51,53 @@ namespace Bato
             m_Health.OnValueChanged += OnHealthChanged;
             m_IsAlive.OnValueChanged += OnAliveChanged;
 
+            m_OutOfWaterSince = -1f;
+            m_OutOfWaterDeathTriggered = false;
             ApplyAliveVisuals(m_IsAlive.Value);
             HealthChanged?.Invoke(m_Health.Value, m_MaxHealth);
+        }
+
+        void Update()
+        {
+            if (!IsServer || !IsSpawned || !m_IsAlive.Value || m_OutOfWaterDeathTriggered) return;
+
+            bool insideVolume = IsInsideWaterVolume(transform.position);
+            if (Time.time >= m_NextOutOfWaterLogTime)
+            {
+                var surface = WaterSurface.Active;
+                Debug.Log($"[BoatHealth] Détection '{name}' | pos={transform.position} | surface={(surface == null ? "null" : surface.GetType().Name)} | insideVolume={insideVolume} | buoyancy={GetComponent<BoatBuoyancy>()?.IsInWater}", this);
+                m_NextOutOfWaterLogTime = Time.time + 0.5f;
+            }
+
+            if (insideVolume)
+            {
+                m_OutOfWaterSince = -1f;
+                return;
+            }
+
+            if (m_OutOfWaterSince < 0f)
+            {
+                m_OutOfWaterSince = Time.time;
+                Debug.Log($"[BoatHealth] '{name}' a quitté le WaterVolume : chute avant destruction.", this);
+            }
+
+            bool graceExpired = Time.time - m_OutOfWaterSince >= m_OutOfWaterGracePeriod;
+            bool belowDeathHeight = transform.position.y <= m_OutOfWaterDeathHeight;
+            if (!graceExpired && !belowDeathHeight) return;
+
+            m_OutOfWaterDeathTriggered = true;
+            Debug.Log($"[BoatHealth] '{name}' détruit hors WaterVolume | y={transform.position.y:0.00} | grace={graceExpired}", this);
+            ApplyDamage(MaxHealth, OwnerClientId);
+        }
+
+        static bool IsInsideWaterVolume(Vector3 position)
+        {
+            if (WaterSurface.Active is WaveField waveField)
+                return waveField.IsInsideWaterBounds(position);
+            if (WaterSurface.Active is BitgemWaterSurface bitgemSurface)
+                return bitgemSurface.IsInsideVolume(position);
+
+            return true;
         }
 
         public override void OnNetworkDespawn()
@@ -115,6 +168,8 @@ namespace Bato
             TeleportRpc(position, rotation);
 
             m_Health.Value = m_MaxHealth;
+            m_OutOfWaterSince = -1f;
+            m_OutOfWaterDeathTriggered = false;
             m_IsAlive.Value = true;
         }
 

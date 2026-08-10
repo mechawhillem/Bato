@@ -151,7 +151,12 @@ namespace Bato.Water
             return new Vector3(-slopeX, 1f, -slopeZ).normalized;
         }
 
-        // ------------------------------------------------------------ Interne
+        /// <summary>Retourne vrai si la position est couverte par la grille réelle du WaterVolume.</summary>
+        public bool IsInsideVolume(Vector3 worldPosition)
+        {
+            return m_Volume != null && TryGetSurfaceLevel(worldPosition, out _);
+        }
+
 
         /// <summary>Ondulation du shader, rejouée telle quelle. Le temps est local, comme le sien.</summary>
         float WaveOffset(Vector3 worldPosition)

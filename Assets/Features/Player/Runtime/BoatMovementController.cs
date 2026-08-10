@@ -53,6 +53,7 @@ namespace Features.Player
         private bool _isDodging;
         private float _dodgeEndTime;
         private Vector3 _dodgeAxis;
+        private float _nextInputLogTime;
 
         /// <summary>1 = normal, &lt;1 = ralenti (ex. boulet chaîne).</summary>
         public float SpeedMultiplier { get; set; } = 1f;
@@ -84,6 +85,10 @@ namespace Features.Player
             if (_inputSource == null) return;
 
             Vector2 input = _inputSource.MoveInput;
+            if (Time.time >= _nextInputLogTime && input.sqrMagnitude > 0.001f)
+            {
+                _nextInputLogTime = Time.time + 0.5f;
+            }
             bool isInWater = _buoyancy != null && _buoyancy.IsInWater;
             bool canJump = _buoyancy == null || isInWater;
             float controlMultiplier = isInWater ? 1f : _airControl;
